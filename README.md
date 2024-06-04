@@ -37,9 +37,8 @@ If an un-whitelisted token interacts with the Router (for example through the de
 https://github.com/thorchain/Resources/blob/master/Audits/THORChain-TrailOfBits-FullAudit-Aug2021.pdf
   - ✅ SCOUTS: If there are multiple report links, please format them in a list.
 - **Documentation:** https://docs.thorchain.org/
-- **Website:** 🐺 CA: add a link to the sponsor's website
-- **X/Twitter:** 🐺 CA: add a link to the sponsor's Twitter
-- **Discord:** 🐺 CA: add a link to the sponsor's Discord
+- **Website:** https://thorchain.org/
+- **X/Twitter:** https://x.com/THORChain
 
 ---
 
@@ -211,7 +210,7 @@ make gas
 ✅ SCOUTS: Add a screenshot of your terminal showing the test coverage
 
 ## Miscellaneous
-Employees of [SPONSOR NAME] and employees' family members are ineligible to participate in this audit.
+Employees of Thorchain and employees' family members are ineligible to participate in this audit.
 
 
 
