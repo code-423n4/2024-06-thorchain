@@ -176,7 +176,7 @@ All files not listed above are Out Of Scope.
 | Question                                | Answer                       |
 | --------------------------------------- | ---------------------------- |
 | ERC20 used by the protocol              |       Any (all possible ERC20s)             |
-| Test coverage                           |                       |
+| Test coverage                           |  Ethereum:  Functions - 46.91% , Lines - 49.33% , Avalanche: Functions - 100%, Lines - 97.44%                   |
 | ERC721 used  by the protocol            |            None              |
 | ERC777 used by the protocol             |           None                |
 | ERC1155 used by the protocol            |              None            |
@@ -272,6 +272,8 @@ To run code coverage
 ```bash
 npx hardhat coverage
 ```
+![Screenshot from 2024-06-05 20-38-56](https://github.com/code-423n4/2024-06-thorchain/assets/65364747/70bf0d43-d92e-409e-a2ec-2a6a05fa4cf3)
+![Screenshot from 2024-06-05 20-28-34](https://github.com/code-423n4/2024-06-thorchain/assets/65364747/1041d87d-776d-47e0-a59d-d9e53e2a9db3)
 
 
 ## Miscellaneous
