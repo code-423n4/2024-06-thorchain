@@ -125,6 +125,9 @@ The most important part of Bifrost for this audit contest is the smartcontract_l
 https://rekt.news/thorchain-rekt/ 
 https://rekt.news/thorchain-rekt2/
 
+## Whitelist Removal
+After the July 2021 hacks, THORChain implemented a whitelist for smart contracts that are able to interact with the Router - this was implemented in the Bifrost layer (txs to contracts not whitelisted would be ignored). THORChain is now removing this whitelist, so an important focus of this audit contest is if removing the whitelist will open any vulnerabilities. Wardens will need to understand both the Router functionality and the Bifrost transaction parsing to properly delve into this problem space.
+
 
 ## Links
 
