@@ -41,14 +41,13 @@ func Execute(c *OpConfig, root *Actor, parallelism int) {
 				finished[a] = true
 				return true
 			}
-			if a.Started() || a.Backgrounded() {
+			if a.Started() {
 				running[a] = true
 				return true
 			}
 
-			// all parents must be finished or backgrounded to start
-			for parent := range a.Parents() {
-				if !parent.Finished() && !parent.Backgrounded() {
+			for parent := range a.Parents() { // all parents must be finished to start
+				if !parent.Finished() {
 					return false
 				}
 			}

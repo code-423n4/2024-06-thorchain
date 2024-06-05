@@ -7,27 +7,6 @@ import (
 	"gitlab.com/thorchain/thornode/common/cosmos"
 )
 
-func Max[T int | uint | int64 | uint64](a, b T) T {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func Min[T int | uint | int64 | uint64](a, b T) T {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func Abs[T int | int64](a T) T {
-	if a < 0 {
-		return -a
-	}
-	return a
-}
-
 func GetMedianUint(vals []cosmos.Uint) cosmos.Uint {
 	if len(vals) == 0 {
 		return cosmos.ZeroUint()

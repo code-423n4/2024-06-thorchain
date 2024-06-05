@@ -877,12 +877,7 @@ func (c *Client) ConfirmationCountReady(txIn stypes.TxIn) bool {
 	}
 	blockHeight := txIn.TxArray[0].BlockHeight
 	confirm := txIn.ConfirmationRequired
-	c.logger.Info().
-		Int64("height", txIn.TxArray[0].BlockHeight).
-		Int64("required", confirm).
-		Int("transactions", len(txIn.TxArray)).
-		Msg("pending confirmations")
-
+	c.logger.Info().Msgf("confirmation required: %d", confirm)
 	// every tx in txIn already have at least 1 confirmation
 	return (c.ethScanner.currentBlockHeight - blockHeight) >= confirm
 }

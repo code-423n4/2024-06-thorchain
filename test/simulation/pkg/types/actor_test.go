@@ -28,8 +28,10 @@ func (s *ActorSuite) TestInit(c *C) {
 	root.InitRoot()
 
 	// init the atomics
-	c.Assert(child1.state, NotNil)
-	c.Assert(grandchild2.state, NotNil)
+	c.Assert(child1.started, NotNil)
+	c.Assert(child1.finished, NotNil)
+	c.Assert(grandchild2.started, NotNil)
+	c.Assert(grandchild2.finished, NotNil)
 
 	// ensure parents are set
 	c.Assert(child1.parents, DeepEquals, map[*Actor]bool{root: true})

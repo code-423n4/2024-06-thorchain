@@ -9,19 +9,6 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////////////
-// ActorState
-////////////////////////////////////////////////////////////////////////////////////////
-
-type ActorState uint32
-
-const (
-	ActorStateUnknown ActorState = iota
-	ActorStateStarted
-	ActorStateBackgrounded
-	ActorStateFinished
-)
-
-////////////////////////////////////////////////////////////////////////////////////////
 // Actor
 ////////////////////////////////////////////////////////////////////////////////////////
 
@@ -51,10 +38,10 @@ type Actor struct {
 
 	// -------------------- internal --------------------
 
-	log     zerolog.Logger
-	parents map[*Actor]bool
-
-	state *atomic.Uint32
+	log      zerolog.Logger
+	parents  map[*Actor]bool
+	started  *atomic.Bool
+	finished *atomic.Bool
 }
 
 // NewActor will create a new actor with the provided name.
@@ -63,33 +50,22 @@ func NewActor(name string) *Actor {
 		Name:     name,
 		Children: map[*Actor]bool{},
 		parents:  map[*Actor]bool{},
-		state:    &atomic.Uint32{},
 	}
 }
 
 // Start will mark the actor as started.
 func (a *Actor) Start() {
-	a.state.Store(uint32(ActorStateStarted))
-}
-
-// Background will mark the actor as backgrounded.
-func (a *Actor) Background() {
-	a.state.Store(uint32(ActorStateBackgrounded))
+	a.started.Store(true)
 }
 
 // Started returns true if the actor has started executing.
 func (a *Actor) Started() bool {
-	return ActorState(a.state.Load()) == ActorStateStarted
-}
-
-// Backgrounded returns true if the actor is backgrounded.
-func (a *Actor) Backgrounded() bool {
-	return ActorState(a.state.Load()) == ActorStateBackgrounded
+	return a.started.Load()
 }
 
 // Finished returns true if the actor has finished executing.
 func (a *Actor) Finished() bool {
-	return ActorState(a.state.Load()) == ActorStateFinished
+	return a.finished.Load()
 }
 
 // Parents returns the parents of the actor.
@@ -112,6 +88,8 @@ func (a *Actor) WalkDepthFirst(f func(*Actor) bool) (cont bool) {
 // InitRoot will initialize the entire actor tree.
 func (a *Actor) InitRoot() {
 	a.WalkDepthFirst(func(b *Actor) bool {
+		b.started = &atomic.Bool{}
+		b.finished = &atomic.Bool{}
 		b.log = log.Logger.With().Str("actor", b.Name).Logger()
 		if b.Timeout == 0 {
 			b.Timeout = time.Minute
@@ -126,7 +104,8 @@ func (a *Actor) InitRoot() {
 	})
 
 	// mark root as started and finished
-	a.state.Store(uint32(ActorStateFinished))
+	a.started.Store(true)
+	a.finished.Store(true)
 }
 
 // Append will append the provided actor - all descendants of the actor will be parents
@@ -167,7 +146,7 @@ func (a *Actor) Execute(c *OpConfig) (err error) {
 
 	// mark finished on return
 	defer func() {
-		a.state.Store(uint32(ActorStateFinished))
+		a.finished.Store(true)
 	}()
 
 	for _, op := range a.Ops {

@@ -194,7 +194,7 @@ _test-regression:
 
 # ------------------------------ Simulation Tests ------------------------------
 
-test-simulation: build-test-simulation build-mocknet reset-mocknet
+test-simulation: build-test-simulation stop-mocknet run-mocknet
 	@docker run --rm ${DOCKER_TTY_ARGS} \
 		-e PARALLELISM --network host -w /app \
 		thornode-simtest sh -c 'make _test-simulation'
@@ -233,8 +233,7 @@ halt-mocknet:
 	@docker compose -f build/docker/docker-compose.yml --profile mocknet --profile midgard down
 
 build-mocknet:
-	@docker compose -f build/docker/docker-compose.yml --profile mocknet --profile midgard build \
-		--build-arg COMMIT=$(COMMIT)
+	@docker compose -f build/docker/docker-compose.yml --profile mocknet --profile midgard build
 
 bootstrap-mocknet:
 	@docker run --rm ${DOCKER_TTY_ARGS} \

@@ -53,6 +53,17 @@ https://github.com/thorchain/Resources/blob/master/Audits/THORChain-TrailOfBits-
 
 *For sponsors that don't use the scoping tool: list all files in scope in the table below (along with hyperlinks) -- and feel free to add notes to emphasize areas of focus.*
 
+This contest is focused on **THORChain Removal of Whitelisting on Router**
+
+- Only whitelisted contracts can call into and receive calls from TC Router
+https://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/whitelist_smartcontract.go?ref_type=headshttps://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/whitelist_smartcontract_aggregators.go?ref_type=heads
+- This is because the July 2021 hacks were all from attack contracts into the router, which faked deposits or tricked the bifrost into refunds
+https://rekt.news/thorchain-rekt/https://rekt.news/thorchain-rekt2/
+- TC wants to remove the whitelisting; but wants to make sure there is no attack paths possible on the router
+https://gitlab.com/thorchain/thornode/-/blob/develop/chain/ethereum/contracts/THORChain_Router.sol
+- Focus on how the Bifrost scans ETH events
+https://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go#L818
+
 | Contract | SLOC | Purpose | Libraries used |  
 | ----------- | ----------- | ----------- | ----------- |
 | [contracts/folder/sample.sol](https://github.com/code-423n4/repo-name/blob/contracts/folder/sample.sol) | 123 | This contract does XYZ | [`@openzeppelin/*`](https://openzeppelin.com/contracts/) |

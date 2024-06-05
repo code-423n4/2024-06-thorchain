@@ -774,12 +774,7 @@ func (e *EVMScanner) getTxInFromSmartContract(tx *etypes.Transaction, receipt *e
 			}
 		}
 	}
-	e.logger.Info().
-		Str("tx hash", txInItem.Tx).
-		Str("gas price", tx.GasPrice().String()).
-		Uint64("gas used", receipt.GasUsed).
-		Uint64("tx status", receipt.Status).
-		Msg("txInItem parsed from smart contract")
+	e.logger.Info().Str("tx hash", txInItem.Tx).Str("gas price", tx.GasPrice().String()).Uint64("gas used", receipt.GasUsed).Uint64("tx status", receipt.Status).Msg("txInItem parsed from smart contract")
 
 	// under no circumstance EVM gas price will be less than 1 Gwei, unless it is in dev environment
 	txGasPrice := tx.GasPrice()

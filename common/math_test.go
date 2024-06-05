@@ -11,44 +11,6 @@ type MathSuite struct{}
 
 var _ = Suite(&MathSuite{})
 
-func (s *MathSuite) TestMax(c *C) {
-	c.Assert(Max(1, 2), Equals, 2)
-	c.Assert(Max(2, 1), Equals, 2)
-	c.Assert(Max(1, 1), Equals, 1)
-
-	c.Assert(Max(int64(1), int64(2)), Equals, int64(2))
-	c.Assert(Max(int64(2), int64(1)), Equals, int64(2))
-	c.Assert(Max(int64(1), int64(1)), Equals, int64(1))
-
-	c.Assert(Max(uint(1), uint(2)), Equals, uint(2))
-	c.Assert(Max(uint(2), uint(1)), Equals, uint(2))
-	c.Assert(Max(uint(1), uint(1)), Equals, uint(1))
-}
-
-func (s *MathSuite) TestMin(c *C) {
-	c.Assert(Min(1, 2), Equals, 1)
-	c.Assert(Min(2, 1), Equals, 1)
-	c.Assert(Min(1, 1), Equals, 1)
-
-	c.Assert(Min(int64(1), int64(2)), Equals, int64(1))
-	c.Assert(Min(int64(2), int64(1)), Equals, int64(1))
-	c.Assert(Min(int64(1), int64(1)), Equals, int64(1))
-
-	c.Assert(Min(uint(1), uint(2)), Equals, uint(1))
-	c.Assert(Min(uint(2), uint(1)), Equals, uint(1))
-	c.Assert(Min(uint(1), uint(1)), Equals, uint(1))
-}
-
-func (s *MathSuite) TestAbs(c *C) {
-	c.Assert(Abs(1), Equals, 1)
-	c.Assert(Abs(-1), Equals, 1)
-	c.Assert(Abs(0), Equals, 0)
-
-	c.Assert(Abs(int64(1)), Equals, int64(1))
-	c.Assert(Abs(int64(-1)), Equals, int64(1))
-	c.Assert(Abs(int64(0)), Equals, int64(0))
-}
-
 func (s *MathSuite) TestWeightedMean(c *C) {
 	vals := []cosmos.Uint{cosmos.NewUint(10), cosmos.NewUint(20), cosmos.NewUint(30)}
 	weights := []cosmos.Uint{cosmos.NewUint(1), cosmos.NewUint(2), cosmos.NewUint(3)}

@@ -32,12 +32,10 @@ type SwapActor struct {
 	toAddress   common.Address
 	toBalance   sdk.Uint
 
-	swapAmount sdk.Uint
-	swapTxID   string
-
-	// expected range for received amount, including outbound fee
+	swapAmount  sdk.Uint
 	minExpected sdk.Uint
 	maxExpected sdk.Uint
+	swapTxID    string
 }
 
 func NewSwapActor(from, to common.Asset) *Actor {
@@ -154,18 +152,16 @@ func (a *SwapActor) getQuote(config *OpConfig) OpResult {
 		}
 	}
 
-	// store expected range to fail if received amount is outside 5% tolerance
+	// store expected range to fail if received amount is outside 10% tolerance
 	quoteOut := sdk.NewUintFromString(quote.ExpectedAmountOut)
-	tolerance := quoteOut.QuoUint64(20)
-	if quote.Fees.Outbound != nil {
-		outboundFee := sdk.NewUintFromString(*quote.Fees.Outbound)
-		quoteOut = quoteOut.Add(outboundFee)
-
-		// handle 2x gas rate fluctuation (add 1x outbound fee to tolerance)
-		tolerance = tolerance.Add(outboundFee)
-	}
+	tolerance := quoteOut.QuoUint64(10)
 	a.minExpected = quoteOut.Sub(tolerance)
 	a.maxExpected = quoteOut.Add(tolerance)
+
+	// utxo chains may give excess gas to user
+	if a.to.Chain.IsUTXO() {
+		a.maxExpected = a.maxExpected.Add(sdk.NewUintFromString(*quote.Fees.Outbound))
+	}
 
 	return OpResult{
 		Continue: true,
@@ -344,50 +340,6 @@ func (a *SwapActor) verifyOutbound(config *OpConfig) OpResult {
 		}
 	}
 
-	// get tx details
-	details, err := thornode.GetTxDetails(a.swapTxID)
-	if err != nil {
-		a.Log().Warn().Err(err).Msg("failed to get tx details")
-		return OpResult{
-			Continue: false,
-		}
-	}
-
-	// verify exactly one out transaction
-	if len(details.OutTxs) != 1 {
-		return OpResult{
-			Error:  fmt.Errorf("expected exactly one out transaction"),
-			Finish: true,
-		}
-	}
-
-	// verify exactly one action
-	if len(details.Actions) != 1 {
-		return OpResult{
-			Error:  fmt.Errorf("expected exactly one action"),
-			Finish: true,
-		}
-	}
-
-	// verify outbound amount + max gas within expected range
-	action := details.Actions[0]
-	out := details.OutTxs[0]
-	outAmountPlusMaxGas := cosmos.NewUintFromString(out.Coins[0].Amount)
-	maxGas := action.MaxGas[0]
-	if maxGas.Asset == a.to.String() {
-		outAmountPlusMaxGas = outAmountPlusMaxGas.Add(cosmos.NewUintFromString(maxGas.Amount))
-	} else {
-		var maxGasAssetValue sdk.Uint
-		maxGasAssetValue, err = thornode.ConvertAssetAmount(maxGas, a.to.String())
-		if err != nil {
-			a.Log().Warn().Err(err).Msg("failed to convert asset")
-			return OpResult{
-				Continue: false,
-			}
-		}
-		outAmountPlusMaxGas = outAmountPlusMaxGas.Add(maxGasAssetValue)
-	}
-
 	// retrieve L1 balance
 	toAcct, err := a.account.ChainClients[a.to.Chain].GetAccount(nil)
 	if err != nil {
@@ -401,14 +353,13 @@ func (a *SwapActor) verifyOutbound(config *OpConfig) OpResult {
 	received := toAcct.Coins.GetCoin(a.to).Amount.Sub(a.toBalance)
 	a.Log().Info().
 		Stringer("received", received).
-		Stringer("outAmountPlusMaxGas", outAmountPlusMaxGas).
 		Stringer("minExpected", a.minExpected).
 		Stringer("maxExpected", a.maxExpected).
 		Msg("swap complete")
 
 	// fail if received amount is outside expected range
-	if outAmountPlusMaxGas.LT(a.minExpected) || outAmountPlusMaxGas.GT(a.maxExpected) {
-		err = fmt.Errorf("out amount plus gas outside tolerance")
+	if received.LT(a.minExpected) || received.GT(a.maxExpected) {
+		err = fmt.Errorf("received amount outside of tolerance")
 	}
 
 	// release user

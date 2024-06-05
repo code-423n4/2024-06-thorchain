@@ -253,7 +253,7 @@ func (h ObservedTxInHandler) handleV131(ctx cosmos.Context, msg MsgObservedTxIn)
 		h.mgr.ObMgr().AppendObserver(tx.Tx.Chain, voter.Tx.GetSigners())
 
 		if !hasFinalised {
-			ctx.Logger().Info("transaction pending confirmation counting", "hash", voter.TxID)
+			ctx.Logger().Info("Tx has not been finalised yet , waiting for confirmation counting", "hash", voter.TxID)
 			continue
 		}
 

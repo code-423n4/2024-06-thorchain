@@ -23,6 +23,7 @@ stages:
   - test
   - build
   - long-test
+  - simulation
 
 fork:
   stage: fork
@@ -127,10 +128,9 @@ build-thornode:
     - BUILDTAG=mocknet BRANCH=mocknet make docker-gitlab-push
 
 chain-avalanche:
-  rules:
-    - changes:
-        paths:
-          - chain/avalanche/**/*
+  only:
+    changes:
+      - chain/avalanche/**/*
   stage: test
   image: node:16
   script:
@@ -140,10 +140,9 @@ chain-avalanche:
     - yarn hardhat test
 
 chain-ethereum:
-  rules:
-    - changes:
-        paths:
-          - chain/ethereum/**/*
+  only:
+    changes:
+      - chain/ethereum/**/*
   stage: test
   image: node:16
   script:
@@ -182,7 +181,8 @@ build-thorscan:
 
 test-simulation:
   rules: *rules
-  stage: long-test
+  allow_failure: true
+  stage: simulation
   image: docker:20.10.12
   services:
     - docker:20.10.12-dind

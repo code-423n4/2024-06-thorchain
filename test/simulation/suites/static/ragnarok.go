@@ -1,4 +1,4 @@
-package suites
+package static
 
 import (
 	"fmt"

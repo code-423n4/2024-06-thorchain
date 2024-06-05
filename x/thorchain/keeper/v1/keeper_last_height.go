@@ -13,8 +13,9 @@ import (
 func (k KVStore) SetLastSignedHeight(ctx cosmos.Context, height int64) error {
 	lastHeight, _ := k.GetLastSignedHeight(ctx)
 	if lastHeight > height {
-		// old observations may be in the past
-		ctx.Logger().Debug("cannot set past height", "last", lastHeight, "current", height)
+		// it is very possible we try to update last sign height to a smaller value , asgard outbound takes time,
+		// simply ignore it
+		ctx.Logger().Info("block height can't go backward ", "last height", lastHeight, "current height", height)
 		return nil
 	}
 	k.setInt64(ctx, k.GetKey(ctx, prefixLastSignedHeight, ""), height)

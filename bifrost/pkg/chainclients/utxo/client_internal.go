@@ -651,8 +651,7 @@ func (c *Client) extractTxs(block *btcjson.GetBlockVerboseTxResult) (types.TxIn,
 		var txInItem types.TxInItem
 		txInItem, err = c.getTxIn(&block.Tx[idx], block.Height, false, vinZeroTxs)
 		if err != nil {
-			// expected since vouts below dust threshold are skipped for vinZeroTxs
-			c.log.Debug().Str("txid", tx.Txid).Err(err).Msg("fail to get TxInItem")
+			c.log.Info().Err(err).Msg("fail to get TxInItem")
 			continue
 		}
 		if txInItem.IsEmpty() {
