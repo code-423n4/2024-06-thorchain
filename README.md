@@ -159,15 +159,15 @@ This contest is focused on **THORChain Removal of Whitelisting on Router**
 [See here](https://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go#L818)
 
 
-| Contract                                                                                                                                                                               | SLOC | Purpose | Libraries used |
-|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------- |:-------------- |
-| [chain/ethereum/contracts/THORChain_Router.sol](https://github.com/code-423n4/2024-06-thorchain/blob/main/chain/ethereum/contracts/THORChain_Router.sol)                               |  378    |         |                |
-| [bifrost/pkg/chainclients/ethereum/whitelist_smartcontract.go](https://github.com/code-423n4/2024-06-thorchain/blob/main/bifrost/pkg/chainclients/ethereum/whitelist_smartcontract.go) |   15   |         |                |
-| [bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go](https://github.com/code-423n4/2024-06-thorchain/blob/main/bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go)   |  824    |         |                |
-| TOTAL  |  1217    |         |                |
+| Contract                                                                                                                                                                                     | SLOC | Purpose | Libraries used |
+|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ------- |:-------------- |
+| [chain/ethereum/contracts/THORChain_Router.sol](https://github.com/code-423n4/2024-06-thorchain/blob/main/chain/ethereum/contracts/THORChain_Router.sol)                                     | 378  |         |                |
+| [bifrost/pkg/chainclients/shared/evm/smartcontract_log_parser.go](https://github.com/code-423n4/2024-06-thorchain/blob/main/bifrost/pkg/chainclients/shared/evm/smartcontract_log_parser.go) | 315   |         |                |
+| [bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go](https://github.com/code-423n4/2024-06-thorchain/blob/main/bifrost/pkg/chainclients/ethereum/ethereum_block_scanner.go)         | 824  |         |                |
+| TOTAL                                                                                                                                                                                        | 1517 |         |                |
 
 ### Files out of scope  
-All files not listed above is Out Of Scope.
+All files not listed above are Out Of Scope.
 
 ## Scoping Q &amp; A
 
@@ -176,7 +176,7 @@ All files not listed above is Out Of Scope.
 | Question                                | Answer                       |
 | --------------------------------------- | ---------------------------- |
 | ERC20 used by the protocol              |       Any (all possible ERC20s)             |
-| Test coverage                           | ✅ SCOUTS: Please populate this after running the test coverage command                          |
+| Test coverage                           |                       |
 | ERC721 used  by the protocol            |            None              |
 | ERC777 used by the protocol             |           None                |
 | ERC1155 used by the protocol            |              None            |
