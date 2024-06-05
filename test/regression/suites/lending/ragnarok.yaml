@@ -1,0 +1,95 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-usdc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# enable lending
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDC-0X9999999999999999999999999999999999999999
+value: 1
+sequence: 0
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: DerivedDepthBasisPts
+value: 10000
+sequence: 1
+---
+type: tx-mimir
+key: "RagnarokProcessNumOfLPPerIteration"
+value: 2
+signer: {{ addr_thor_dog }}
+sequence: 2
+---
+type: tx-mimir
+key: "FundMigrationInterval"
+value: 1
+signer: {{ addr_thor_dog }}
+sequence: 3
+---
+type: create-blocks
+count: 2
+---
+########################################################################################
+# create loan with btc
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "5000000" # 5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 1
+---
+########################################################################################
+# ragnarok the pool
+########################################################################################
+type: tx-mimir
+key: "RAGNAROK-BTC-BTC"
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC
+asserts:
+  - .status == "Suspended"
+---
+# borrower record removed
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 0
+---
+# single LP outbound
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1

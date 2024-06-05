@@ -1,0 +1,198 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC.BTC"
+---
+########################################################################################
+# allow THOR.BTC derived asset pool
+########################################################################################
+type: tx-mimir
+key: DerivedDepthBasisPts
+value: 10000
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# the block just broadcast has a BeginBlock with no THOR.BTC pool
+# and the Mimir allowing THOR.BTC in the next block,
+# so the THOR.BTC pool doesn't exist yet
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC.BTC"
+---
+########################################################################################
+# expect the THOR.BTC pool to exist and emit only one Available status event
+########################################################################################
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 2
+  - .pools[0].asset == "BTC.BTC"
+  - .pools[1].asset == "THOR.BTC"
+  - .pools[1].status == "Available"
+  - .pools[1].status_since == 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.begin_block_events[]|select(.type == "pool")]|length == 1
+  - .begin_block_events[]|select(.type == "pool")|.type == "pool"
+  - .begin_block_events[]|select(.type == "pool")|.pool == "THOR.BTC"
+  - .begin_block_events[]|select(.type == "pool")|.pool_status == "Available"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 2
+  - .pools[0].asset == "BTC.BTC"
+  - .pools[1].asset == "THOR.BTC"
+  - .pools[1].status == "Available"
+  - .pools[1].status_since == 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.begin_block_events[]|select(.type == "pool")]|length == 0
+---
+########################################################################################
+# no longer allow THOR.BTC derived asset pool
+########################################################################################
+type: tx-mimir
+key: DerivedDepthBasisPts
+value: 0
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 2
+  - .pools[0].asset == "BTC.BTC"
+  - .pools[1].asset == "THOR.BTC"
+  - .pools[1].status == "Available"
+  - .pools[1].status_since == 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.begin_block_events[]|select(.type == "pool")]|length == 0
+---
+########################################################################################
+# expect the THOR.BTC pool to be suspended and emit only one Suspended status event
+########################################################################################
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Suspended"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 1
+  - .pools[0].asset == "BTC.BTC"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .begin_block_events|length == 1
+  - .begin_block_events[0].type == "pool"
+  - .begin_block_events[0].pool == "THOR.BTC"
+  - .begin_block_events[0].pool_status == "Suspended"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Suspended"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .begin_block_events|length == 0
+---
+########################################################################################
+# allow THOR.BTC derived asset pool again
+########################################################################################
+type: tx-mimir
+key: DerivedDepthBasisPts
+value: 10000
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Available" # querier reflects the next block status
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .begin_block_events|length == 0
+---
+########################################################################################
+# expect the THOR.BTC pool to exist and emit only one Available status event
+########################################################################################
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 2
+  - .pools[0].asset == "BTC.BTC"
+  - .pools[1].asset == "THOR.BTC"
+  - .pools[1].status == "Available"
+  - .pools[1].status_since == 9
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.begin_block_events[]|select(.type == "pool")]|length == 1
+  - .begin_block_events[]|select(.type == "pool")|.type == "pool"
+  - .begin_block_events[]|select(.type == "pool")|.pool == "THOR.BTC"
+  - .begin_block_events[]|select(.type == "pool")|.pool_status == "Available"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/export
+asserts:
+  - .pools|length == 2
+  - .pools[0].asset == "BTC.BTC"
+  - .pools[1].asset == "THOR.BTC"
+  - .pools[1].status == "Available"
+  - .pools[1].status_since == 9
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.begin_block_events[]|select(.type == "pool")]|length == 0

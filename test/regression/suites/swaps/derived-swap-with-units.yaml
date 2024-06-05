@@ -1,0 +1,92 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-pool-state.yaml" }}
+---
+# Mainnet-like state of THOR.BTC having 'grandfathered' units inherited from the BTC.BTC pool
+type: state
+genesis:
+  app_state:
+    thorchain:
+      pools:
+        - LP_units: "100000000000"
+          asset: BTC.BTC
+          balance_asset: "100000000"
+          balance_rune: "100000000000"
+          decimals: "8"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "0"
+        - LP_units: "100000000000"
+          asset: THOR.BTC
+          balance_asset: "100000000"
+          balance_rune: "100000000000"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "0"
+---
+type: create-blocks
+count: 1
+---
+type: tx-mimir
+key: DerivedDepthBasisPts
+value: 10000
+signer: {{ addr_thor_dog }}
+sequence: 0
+---
+type: tx-mimir
+key: EnableDerivedAssets
+value: 1
+signer: {{ addr_thor_dog }}
+sequence: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Suspended"
+---
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Available"
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000000"
+    asset: "rune"
+memo: "=:THOR.BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/supply
+asserts:
+  - .supply[]|select(.denom == "thor.btc")|.amount|tonumber == 978303
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances[]|select(.denom == "thor.btc")|.amount|tonumber == 978303 # should be the total supply
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "50000"
+    asset: "THOR.BTC"
+memo: "=:BTC/BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .|[.balances[]|select(.denom == "thor.btc")]|length == 1
+  - .|[.balances[]|select(.denom == "btc/btc")]|length == 1
+# Invariant checks are implicit in the regression test.

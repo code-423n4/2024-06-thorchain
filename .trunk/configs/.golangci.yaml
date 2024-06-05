@@ -1,0 +1,36 @@
+linters:
+  enable:
+    - errcheck
+    - exportloopref
+    - forcetypeassert
+    - gocritic
+    - revive
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - promlinter
+    - revive
+    - staticcheck
+    - typecheck
+    - unconvert
+    - unused
+  ERROR: []
+linters-settings:
+  exhaustive:
+    check-generated: false
+  exhaustivestruct:
+    check-generated: false
+  staticcheck:
+    checks: ["all"]
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+  govet:
+    check-shadowing: true
+  # TODO: disable above and uncomment these on future versions
+  # settings:
+  #   shadow:
+  #     strict: true

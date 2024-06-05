@@ -1,0 +1,128 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/outbound_fees
+asserts:
+  - .|length == 3
+  - .[0] == {"asset":"THOR.RUNE","outbound_fee":"2000000"} # Only those two fields, others omitted.
+  ###
+  - .[1].asset == "BTC.BTC"
+  - .[1].outbound_fee == "14000"
+  - .[1].fee_withheld_rune == "0"
+  - .[1].fee_spent_rune == "0"
+  - .[1].surplus_rune == "0"
+  - .[1].dynamic_multiplier_basis_points == "20000"
+  ###
+  - .[2].asset == "ETH.ETH"
+  - .[2].outbound_fee == "1280000"
+  - .[2].fee_withheld_rune == "0"
+  - .[2].fee_spent_rune == "0"
+  - .[2].surplus_rune == "0"
+  - .[2].dynamic_multiplier_basis_points == "20000"
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "10000000000"
+    asset: "rune"
+memo: "=:${OUT_ASSET=BTC.BTC}:{{ addr_btc_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/outbound_fee/${OUT_ASSET}
+asserts:
+  - .|length == 1
+  - .[0].fee_withheld_rune == "${FEE_WITHHELD=16784900}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+- tx:
+    id: '{{ observe_txid 1 }}'
+    chain: BTC
+    from_address: {{ addr_btc_dog }}
+    to_address: {{ addr_btc_fox }}
+    coins:
+      - amount: "8250426"
+        asset: "${OUT_ASSET}"
+        decimals: 8
+    gas:
+      - amount: "10500"
+        asset: "BTC.BTC"
+    memo: "OUT:{{ native_txid -1 }}"
+  block_height: 2
+  finalise_height: 2
+  observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/outbound_fee/${OUT_ASSET}
+asserts:
+  - .[0].fee_withheld_rune == "${FEE_WITHHELD}"
+  - .[0].fee_spent_rune == "${FEE_SPENT=12582593}"
+  - .[0].surplus_rune|tonumber == ${FEE_WITHHELD} - ${FEE_SPENT}
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+- tx:
+    id: '{{ observe_txid 2 }}'
+    chain: BTC
+    from_address: {{ addr_btc_fox }}
+    to_address: {{ addr_btc_dog }}
+    coins:
+      - amount: "5000000"
+        asset: "BTC.BTC"
+        decimals: 8
+    gas:
+      - amount: "10000"
+        asset: "BTC.BTC"
+    memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+  block_height: 1
+  finalise_height: 1
+  observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2495385582428
+---
+type: check
+endpoint: http://localhost:1317/thorchain/outbound_fees
+asserts:
+  - .|length == 3
+  - .[0] == {"asset":"THOR.RUNE","outbound_fee":"2000000"}
+  ###
+  - .[1].asset == "BTC.BTC"
+  - .[1].outbound_fee == "14000"
+  - .[1].fee_withheld_rune == "${FEE_WITHHELD}"
+  - .[1].fee_spent_rune == "${FEE_SPENT}"
+  - .[1].surplus_rune|tonumber == ${FEE_WITHHELD} - ${FEE_SPENT}
+  - .[1].dynamic_multiplier_basis_points == "20000"
+  ###
+  - .[2].asset == "ETH.ETH"
+  - .[2].outbound_fee == "1280000"
+  - .[2].fee_withheld_rune == "0"
+  - .[2].fee_spent_rune == "0"
+  - .[2].surplus_rune == "0"
+  - .[2].dynamic_multiplier_basis_points == "20000"
+  ### 
+  # No change from the THOR.RUNE outbound, since not an external Layer 1 Asset.

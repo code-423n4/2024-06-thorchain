@@ -1,0 +1,63 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 2
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2500000000000
+---
+type: create-blocks
+count: 1
+---
+# deposit with multiple coins should be invalid
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "0"
+    asset: "BTC~BTC"
+  - amount: "35000000000000"
+    asset: "RUNE"
+memo: "name:foo:BTC:bc1fx6fsev97atsm5j62kgecpslv6vx2nffv0qq2q"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2500000000000-2000000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+# send with multiple coins should be invalid
+type: tx-send
+from_address: {{ addr_thor_fox }}
+to_address: {{ addr_thor_wolf }}
+amount:
+  - denom: "btc/btc"
+    amount: "1"
+  - denom: rune
+    amount: "2500000000000"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2500000000000-4000000

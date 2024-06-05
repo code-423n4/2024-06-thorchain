@@ -1,0 +1,263 @@
+type: state
+genesis:
+  initial_height: "0"
+  app_state:
+    auth:
+      accounts:
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "0"
+            address: {{ addr_module_transfer }}
+            pub_key: ~
+            sequence: "0"
+          name: transfer
+          permissions:
+            - minter
+            - burner
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "1"
+            address: {{ addr_module_asgard }}
+            pub_key: ~
+            sequence: "0"
+          name: asgard
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "2"
+            address: {{ addr_module_thorchain }}
+            pub_key: ~
+            sequence: "0"
+          name: thorchain
+          permissions:
+            - minter
+            - burner
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "3"
+            address: {{ addr_module_reserve }}
+            pub_key: ~
+            sequence: "0"
+          name: reserve
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "4"
+            address: {{ addr_module_fee_collector }}
+            pub_key: ~
+            sequence: "0"
+          name: fee_collector
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "5"
+            address: {{ addr_module_bond }}
+            pub_key: ~
+            sequence: "0"
+          name: bond
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_dog }}
+          pub_key: null
+          account_number: "6"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_cat }}
+          pub_key: null
+          account_number: "7"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_fox }}
+          pub_key: null
+          account_number: "8"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_pig }}
+          pub_key: null
+          account_number: "9"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_frog }}
+          pub_key: null
+          account_number: "10"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_goat }}
+          pub_key: null
+          account_number: "11"
+          sequence: "0"
+    bank:
+      balances:
+        - address: {{ addr_thor_dog }}
+          coins:
+            - denom: rune
+              amount: "5000000000000"
+        - address: {{ addr_thor_cat }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_thor_pig }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_thor_fox }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_thor_frog }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_thor_goat }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_module_reserve }}
+          coins:
+            - amount: "35000000000000"
+              denom: rune
+        - address: {{ addr_module_bond }}
+          coins:
+            - amount: "12500000000000"
+              denom: rune
+        - address: {{ addr_module_asgard }}
+          coins:
+            - amount: "200000000000"
+              denom: rune
+      params:
+        default_send_enabled: false
+    transfer:
+      params:
+        send_enabled: false
+    thorchain:
+      store_version: "{{ store_version }}" # avoid store migrations
+      node_accounts:
+        - active_block_height: "0"
+          bond: "2500000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_cat }}
+          bond_address: {{ addr_thor_cat }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqwlkdxcyz8fnxk3xp0eqt89g6cxau2c4zp89yr2x2dy56s2zgu2jx3pmacu"
+          signer_membership: []
+          status: Active
+          # matches the priv_validator_key.json mounted in the test container
+          validator_cons_pub_key: tthorcpub1zcjduepqq75h7uy6qhesh9d3a9tuk0mzrnc46u8rye44ze6peua3zmpfh23q8z37sz
+          version: {{ version }}
+        - active_block_height: "0"
+          bond: "2500000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_fox }}
+          bond_address: {{ addr_thor_fox }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqv8lvvqmczr893yf7zyf7xtffccf032aprl8z09y3e3nfruedew85n306k5"
+          signer_membership: []
+          status: Active
+          validator_cons_pub_key: tthorcpub1zcjduepq0ap4y48xm0q6q5mr57p4uc2ncw600dz4j56g7tltwp7mj35lt0esxgmux2
+          version: {{ version }}
+        - active_block_height: "0"
+          bond: "2500000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_pig }}
+          bond_address: {{ addr_thor_pig }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqg0rpnr9y7csa6rzy73w7ldfhlf5kthmn77xzeqx68mueh9pest9vlvs93k"
+          signer_membership: []
+          status: Active
+          validator_cons_pub_key: tthorcpub1zcjduepqe2er9prrhm8mtk8lknp6evstnnqvf8uynwatmm3cwh78tz3glsws0wxum3
+          version: {{ version }}
+        - active_block_height: "0"
+          bond: "2500000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_frog }}
+          bond_address: {{ addr_thor_frog }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqg0rpnr9y7csa6rzy73w7ldfhlf5kthmn77xzeqx68mueh9pest9vlvs93k"
+          signer_membership: []
+          status: Active
+          validator_cons_pub_key: tthorcpub1zcjduepqe2er9prrhm8mtk8lknp6evstnnqvf8uynwatmm3cwh78tz3glsws0wxum3
+          version: {{ version }}
+        - active_block_height: "0"
+          bond: "2500000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_goat }}
+          bond_address: {{ addr_thor_goat }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqg0rpnr9y7csa6rzy73w7ldfhlf5kthmn77xzeqx68mueh9pest9vlvs93k"
+          signer_membership: []
+          status: Active
+          validator_cons_pub_key: tthorcpub1zcjduepqe2er9prrhm8mtk8lknp6evstnnqvf8uynwatmm3cwh78tz3glsws0wxum3
+          version: {{ version }}
+      liquidity_providers:
+        - asset: BTC.BTC
+          asset_address: {{ addr_btc_cat }}
+          asset_deposit_value: "100000000"
+          last_add_height: "1"
+          pending_asset: "0"
+          pending_rune: "0"
+          rune_address: {{ addr_thor_cat }}
+          rune_deposit_value: "100000000000"
+          units: "100000000000"
+        - asset: ETH.ETH
+          asset_address: {{ addr_eth_cat }}
+          asset_deposit_value: "1000000000"
+          last_add_height: "1"
+          pending_asset: "0"
+          pending_rune: "0"
+          rune_address: {{ addr_thor_cat }}
+          rune_deposit_value: "100000000000"
+          units: "100000000000"
+      pools:
+        - LP_units: "100000000000"
+          asset: BTC.BTC
+          balance_asset: "100000000"
+          balance_rune: "100000000000"
+          decimals: "8"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "0"
+        - LP_units: "100000000000"
+          asset: ETH.ETH
+          balance_asset: "1000000000"
+          balance_rune: "100000000000"
+          decimals: "8"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "0"
+      network_fees:
+        - chain: BTC
+          transaction_fee_rate: "7"
+          transaction_size: "1000"
+        - chain: ETH
+          transaction_fee_rate: "8"
+          transaction_size: "80000"
+      vaults:
+        - block_height: "0"
+          chains:
+            - THOR
+            - BTC
+            - LTC
+            - BCH
+            - BNB
+            - ETH
+            - DOGE
+            - TERRA
+            - AVAX
+            - GAIA
+          coins:
+            - amount: "100000000"
+              asset: BTC.BTC
+              decimals: "8"
+            - amount: "1000000000"
+              asset: ETH.ETH
+              decimals: "8"
+          inbound_tx_count: "2"
+          membership:
+            - tthorpub1addwnpepqwlkdxcyz8fnxk3xp0eqt89g6cxau2c4zp89yr2x2dy56s2zgu2jx3pmacu
+            - tthorpub1addwnpepqv8lvvqmczr893yf7zyf7xtffccf032aprl8z09y3e3nfruedew85n306k5
+            - tthorpub1addwnpepqg0rpnr9y7csa6rzy73w7ldfhlf5kthmn77xzeqx68mueh9pest9vlvs93k
+          pub_key: tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+          status: ActiveVault
+          type: AsgardVault

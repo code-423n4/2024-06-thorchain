@@ -1,0 +1,623 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-3usd-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+---
+########################################################################################
+# enable lending
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDX-0X9999999999999999999999999999999999999999
+value: 1
+sequence: 0
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDY-0X9999999999999999999999999999999999999999
+value: 1
+sequence: 1
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDZ-0X9999999999999999999999999999999999999999
+value: 1
+sequence: 2
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: DerivedDepthBasisPts
+value: 10000
+sequence: 3
+---
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .DERIVEDDEPTHBASISPTS == 10000
+  - ."TORANCHOR-ETH-USDX-0X9999999999999999999999999999999999999999" == 1
+  - ."TORANCHOR-ETH-USDY-0X9999999999999999999999999999999999999999" == 1
+  - ."TORANCHOR-ETH-USDZ-0X9999999999999999999999999999999999999999" == 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Available"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.ETH
+asserts:
+  - .status == "Available"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 299999999999
+  - .balance_rune|tonumber == 300001797948
+---
+########################################################################################
+# 1/3 of tor anchor pools depeg (no significant effect)
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 500000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .expected_amount_out|tonumber == ${INITIAL_EXPECTED_OUT=486545262}
+  - .expected_debt_issued|tonumber == ${INITIAL_EXPECTED_DEBT_ISSUED=490140000}
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "100000000000" # 100% depth
+    asset: "rune"
+memo: "=:ETH.USDZ-0X9999999999999999999999999999999999999999:{{ addr_eth_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 500000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .expected_amount_out|tonumber == 486932548 # some change (TODO below)
+  - .expected_amount_out|tonumber != ${INITIAL_EXPECTED_OUT}
+  - .expected_debt_issued|tonumber == ${INITIAL_EXPECTED_DEBT_ISSUED} # no change, since no median price change
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid -1 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_fox }}
+      coins:
+        - amount: "24951999800"
+          asset: "ETH.USDZ-0X9999999999999999999999999999999999999999"
+          decimals: 8
+      gas:
+        - amount: "960000"
+          asset: "ETH.ETH"
+      memo: "OUT:{{ native_txid -1 }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 3962255700
+  - .balance_rune|tonumber == 3962285943
+  - .derived_depth_bps|tonumber == 100 # squash to 1%
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000" # 0.5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 1
+  - .[0]|.collateral_deposited == "495049"
+  - .[0]|.debt_issued == "490140000"
+  - .[0]|.collateral_withdrawn == "0"
+  - .[0]|.debt_repaid == "0"
+  - .[0]|.owner == "{{ addr_btc_fox }}"
+---
+########################################################################################
+# 2/3 of tor anchor pools depeg
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 5000000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .expected_amount_out|tonumber == ${INITIAL_EXPECTED_OUT=988298937}
+  - .expected_debt_issued|tonumber == 4095920000
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "100000000000" # 100% depth
+    asset: "rune"
+memo: "=:ETH.USDY-0X9999999999999999999999999999999999999999:{{ addr_eth_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 5000000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  # the expected amount is up, but by less than the RUNE to manipulate
+  - .expected_amount_out|tonumber > ${INITIAL_EXPECTED_OUT}
+  - .expected_amount_out|tonumber-100000000000 < ${INITIAL_EXPECTED_OUT}
+  - .expected_debt_issued|tonumber == 1565380000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid -1 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 3 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_fox }}
+      coins:
+        - amount: "24951907500"
+          asset: "ETH.USDY-0X9999999999999999999999999999999999999999"
+          decimals: 8
+      gas:
+        - amount: "960000"
+          asset: "ETH.ETH"
+      memo: "OUT:{{ native_txid -1 }}"
+    block_height: 3
+    finalise_height: 3
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 1886131063
+  - .balance_rune|tonumber == 4919871603
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 4 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000" # 0.5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_pig }}"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 2
+  - .[1]|.collateral_deposited == "494905"
+  - .[1]|.debt_issued == "186000000" # almost 3x less debt than no manipulation
+  - .[1]|.collateral_withdrawn == "0"
+  - .[1]|.debt_repaid == "0"
+  - .[1]|.owner == "{{ addr_btc_pig }}"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 1886131063
+  - .balance_rune|tonumber == 4919871603
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.end_block_events[]|select(.type=="outbound" and .to=="{{ addr_thor_pig }}")]|length == 1'
+  # use this amount later to pay back the loan after anchor repegs
+  - .end_block_events[]|select(.type=="outbound" and .to=="{{ addr_thor_pig }}")|.coin == "${RUNE_BORROWED=399979715} THOR.RUNE"
+---
+########################################################################################
+# 2/3 of tor anchor pools depeg and attacker prevents swaps for max anchor blocks
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: MaxAnchorBlocks
+value: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 5000000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .expected_amount_out|tonumber == 1216303847
+  - .expected_debt_issued|tonumber == 1551380000
+---
+type: create-blocks
+count: 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 5000000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  # anchor blocks must be set sufficiently high, otherwise debt can be manipulated with
+  # no penalty on the debt outbound from the contracted virtual pool
+  - .expected_amount_out|tonumber == 3991091487
+  - .expected_debt_issued|tonumber == 1556190000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 188613106302
+  - .balance_rune|tonumber == 491989202611
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 5 }}"
+      chain: BTC
+      from_address: {{ addr_btc_bird }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000" # 0.5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_bird }}"
+    block_height: 5
+    finalise_height: 5
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 3
+  - .[2]|.collateral_deposited == "495098"
+  - .[2]|.debt_issued == "184250000" # almost 3x less debt than no manipulation
+  - .[2]|.collateral_withdrawn == "0"
+  - .[2]|.debt_repaid == "0"
+  - .[2]|.owner == "{{ addr_btc_bird }}"
+---
+########################################################################################
+# remove all depegged anchor pools to resolve
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDY-0X9999999999999999999999999999999999999999
+value: -1
+sequence: 10
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDZ-0X9999999999999999999999999999999999999999
+value: -1
+sequence: 11
+---
+type: create-blocks
+count: 2 # 2 blocks required to update tor pool
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - ."TORANCHOR-ETH-USDY-0X9999999999999999999999999999999999999999" == null
+  - ."TORANCHOR-ETH-USDZ-0X9999999999999999999999999999999999999999" == null
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/thor.tor
+asserts:
+  - .balance_asset|tonumber == 99999999999
+  - .balance_rune|tonumber == 100001593642
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 6 }}"
+      chain: BTC
+      from_address: {{ addr_btc_deer }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000" # 0.5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_deer }}"
+    block_height: 6
+    finalise_height: 6
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 4
+  - .[1]|.collateral_deposited == "495122"
+  - .[1]|.debt_issued == "475950000"
+  - .[1]|.collateral_withdrawn == "0"
+  - .[1]|.debt_repaid == "0"
+  - .[1]|.owner == "{{ addr_btc_deer }}"
+---
+########################################################################################
+# malicious actor profits when repaying loan after tor repegs
+########################################################################################
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_pig }}
+asserts:
+  - .balances[]|select(.denom == "rune")|.amount == "${RUNE_BORROWED}"
+  # Prepare repay amount.
+  - ${RUNE_BORROWED} - 2000000 == ${REPAY_AMOUNT=397979715}
+---
+type: tx-deposit
+signer: {{ addr_thor_pig }}
+coins:
+  - amount: "${REPAY_AMOUNT}" # exactly what we received as debt minus gas fee
+    asset: "rune"
+memo: "LOAN-:BTC.BTC:{{ addr_btc_pig }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_pig }}
+asserts:
+  - .balances|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 4
+  - .[2]|.collateral_deposited   == "494905"
+  - .[2]|.collateral_withdrawn == "494905"
+  - .[2]|.debt_issued   == "186000000"
+  - .[2]|.debt_repaid == "394824526" # over 2x the repaid debt
+  - .[2]|.owner == "{{ addr_btc_pig }}"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid -1 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 7 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "471303"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "OUT:{{ native_txid -1 }}"
+    block_height: 7
+    finalise_height: 7
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+########################################################################################
+# remove all anchor pools
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDX-0X9999999999999999999999999999999999999999
+value: -1
+sequence: 14
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - ."TORANCHOR-ETH-USDX-0X9999999999999999999999999999999999999999" == null
+---
+########################################################################################
+# attempt to open on existing loan with all tor anchors removed
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 8 }}"
+      chain: BTC
+      from_address: {{ addr_btc_duck }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000" # 0.5% of pool
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "LOAN+:THOR.RUNE:{{ addr_thor_duck }}"
+    block_height: 8
+    finalise_height: 8
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.end_block_events[]|select(.type == "refund")]|length == 1'
+  - .end_block_events[]|select(.type == "refund")|.from == "{{ addr_btc_duck }}"
+  - .end_block_events[]|select(.type == "refund")|.reason == "TOR price cannot be zero"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 8 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_duck }}
+      coins:
+        - amount: "486000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "REFUND:{{ observe_txid 8 }}"
+    block_height: 9
+    finalise_height: 9
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc/borrowers
+asserts:
+  - .|length == 4 # no change
+---
+########################################################################################
+# attempt to close existing loan with all tor anchors removed
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "100000000"
+    asset: "rune"
+memo: "LOAN-:BTC.BTC:{{ addr_btc_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.end_block_events[]|select(.type == "refund")]|length == 1
+  - .end_block_events[]|select(.type == "refund")|.reason == "pool(THOR.TOR) is not available"
+  - .end_block_events[]|select(.type == "refund")|.from == "{{ addr_thor_fox }}"
+  # The from field is the user's which receives the refund
+  - .end_block_events[]|select(.type == "refund")|.to == "{{ addr_module_asgard }}"
+  # The to field is the address to which the user first sends the funds (not the swap destination).
+  - .|[.end_block_events[]|select(.type == "outbound")]|length == 1
+  - .end_block_events[]|select(.type == "outbound")|.from == "{{ addr_module_asgard }}"
+  - .end_block_events[]|select(.type == "outbound")|.to == "{{ addr_thor_fox }}"

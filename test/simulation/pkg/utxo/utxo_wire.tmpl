@@ -1,0 +1,73 @@
+package utxo
+
+import (
+  "github.com/btcsuite/btcd/wire"
+  "github.com/btcsuite/btcd/chaincfg/chainhash"
+
+  {{- range $chain, $pkg := . }}
+  {{ $chain }}wire "{{ $pkg }}/wire"
+  {{ $chain }}chainhash "{{ $pkg }}/chaincfg/chainhash"
+  {{- end }}
+)
+
+{{- range $chain, $pkg := . }}
+
+func wireTo{{ ToUpper $chain }}(tx *wire.MsgTx) *{{ $chain }}wire.MsgTx {
+	txc := &{{ $chain }}wire.MsgTx{
+		Version:  tx.Version,
+		LockTime: tx.LockTime,
+	}
+	for _, rtx := range tx.TxIn {
+		txi := &{{ $chain }}wire.TxIn{
+			PreviousOutPoint: {{ $chain }}wire.OutPoint{
+				Hash:  {{ $chain }}chainhash.Hash(rtx.PreviousOutPoint.Hash),
+				Index: rtx.PreviousOutPoint.Index,
+			},
+			SignatureScript: rtx.SignatureScript,
+{{- if ne $chain "bch" }}
+			Witness:         {{ $chain }}wire.TxWitness(rtx.Witness),
+{{- end }}
+			Sequence:        rtx.Sequence,
+		}
+		txc.TxIn = append(txc.TxIn, txi)
+	}
+	for _, stx := range tx.TxOut {
+		txo := &{{ $chain }}wire.TxOut{
+			Value:    stx.Value,
+			PkScript: stx.PkScript,
+		}
+		txc.TxOut = append(txc.TxOut, txo)
+	}
+	return txc
+}
+
+func {{ $chain }}ToWire(txc *{{ $chain }}wire.MsgTx) *wire.MsgTx {
+	tx := &wire.MsgTx{
+		Version:  txc.Version,
+		LockTime: txc.LockTime,
+	}
+	for _, rtx := range txc.TxIn {
+		txi := &wire.TxIn{
+			PreviousOutPoint: wire.OutPoint{
+				Hash:  chainhash.Hash(rtx.PreviousOutPoint.Hash),
+				Index: rtx.PreviousOutPoint.Index,
+			},
+			SignatureScript: rtx.SignatureScript,
+{{- if ne $chain "bch" }}
+			Witness:         wire.TxWitness(rtx.Witness),
+{{- end }}
+			Sequence:        rtx.Sequence,
+		}
+		tx.TxIn = append(tx.TxIn, txi)
+	}
+	for _, stx := range txc.TxOut {
+		txo := &wire.TxOut{
+			Value:    stx.Value,
+			PkScript: stx.PkScript,
+		}
+		tx.TxOut = append(tx.TxOut, txo)
+	}
+	return tx
+}
+
+{{- end }}

@@ -1,0 +1,11 @@
+{
+  "name": "Mocknet Token List",
+  "logoURI": "",
+  "keywords": ["avalanche"],
+  "version": {
+    "major": 86,
+    "minor": 0,
+    "patch": 0
+  },
+  "tokens": []
+}

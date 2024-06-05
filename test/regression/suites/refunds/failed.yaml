@@ -1,0 +1,129 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 2
+---
+########################################################################################
+# valid swap rune to synth
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000000"
+    asset: "rune"
+memo: "=:BTC/BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 2
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2498998000000
+  - .balances[]|select(.denom == "btc/btc")|.amount|tonumber == 988089
+---
+########################################################################################
+# swap insufficient rune for refund (rune sent to reserve)
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "10000"
+    asset: "rune"
+memo: "=:BTC.BTC:{{ addr_btc_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 2
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2498998000000-2000000-10000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.end_block_events[]|select(.type=="reserve")]|length == 1'
+  - .end_block_events[]|select(.type=="reserve")|.coin == "10000 THOR.RUNE"
+---
+########################################################################################
+# swap insufficient synth for refund (synth sent to reserve)
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "100"
+    asset: "btc/btc"
+memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 2
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2498998000000-4000000-10000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.end_block_events[]|select(.type=="reserve")]|length == 1'
+  - .end_block_events[]|select(.type=="reserve")|.coin == "100 BTC/BTC"
+---
+########################################################################################
+# swap l1 to rune failed limit (l1 left in vault, removed from pool)
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "1000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/vaults/asgard
+asserts:
+  - .[]|.coins[]|select(.asset=="BTC.BTC")|.amount|tonumber == 100001000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/btc.btc
+asserts:
+  - .balance_asset|tonumber == 100000000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/scheduled
+asserts:
+  - length == 0
+---
+type: fail-export-invariants

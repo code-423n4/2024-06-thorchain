@@ -1,0 +1,209 @@
+{{ template "default-state.yaml" }}
+---
+# Fox and cat start with identical positions in the BTC.BTC and ETH.ETH pools; here cat can represent POL.
+type: state
+genesis:
+  app_state:
+    auth:
+      accounts:
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_goat }}
+          pub_key: null
+          account_number: "9"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_wolf }}
+          pub_key: null
+          account_number: "10"
+          sequence: "0"
+    bank:
+      balances:
+        - address: {{ addr_module_asgard }}
+          coins:
+            - amount: "1_000_000_00000000"
+              denom: rune
+        - address: {{ addr_thor_wolf }}
+          coins:
+            - amount: "1_000_00000000" # 50% SynthPerPoolDepth
+              denom: btc/btc
+            - amount: "1_000_000_98000000" # The 0.98 RUNE is to be used for transaction fees.
+              denom: rune
+    thorchain:
+      liquidity_providers:
+        - asset: BTC.BTC
+          asset_deposit_value: "450_00000000"
+          last_add_height: "1"
+          pending_asset: "0"
+          pending_rune: "0"
+          rune_address: {{ addr_thor_goat }} # Representing passive liquidity providers or POL
+          rune_deposit_value: "450_000_00000000"
+          units: "450_000_00000000"
+        - asset: BTC.BTC
+          asset_deposit_value: "50_00000000"
+          last_add_height: "1"
+          pending_asset: "0"
+          pending_rune: "0"
+          rune_address: {{ addr_thor_wolf }}
+          rune_deposit_value: "50_000_00000000"
+          units: "50_000_00000000"
+      pools:
+        - LP_units: "500_000_00000000"
+          asset: BTC.BTC
+          balance_asset: "1_000_00000000"
+          balance_rune: "1_000_000_00000000"
+          decimals: "8"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "500_000_00000000"
+      network_fees:
+        - chain: BTC
+          transaction_fee_rate: "7"
+          transaction_size: "1000"
+      vaults:
+        - block_height: "0"
+          chains:
+            - THOR
+            - BTC
+            - LTC
+            - BCH
+            - BNB
+            - ETH
+            - DOGE
+            - TERRA
+            - AVAX
+            - GAIA
+          coins:
+            - amount: "1_000_00000000"
+              asset: BTC.BTC
+              decimals: "8"
+          inbound_tx_count: "1"
+          membership:
+            - tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+          pub_key: tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+          status: ActiveVault
+          type: AsgardVault
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# set MaxSynthPerPoolDepth high enough to allow synth minting
+########################################################################################
+type: tx-mimir
+key: MaxSynthPerPoolDepth
+value: 6000
+signer: {{ addr_thor_dog }}
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_wolf}}
+asserts:
+  - .asset_redeem_value == ("50_00000000" | gsub("_";""))
+  - .rune_redeem_value == ("50_000_00000000" | gsub("_";""))
+  - .luvi_growth_pct == "0.000000000000000000"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_goat }}
+asserts:
+  - .asset_redeem_value == ("450_00000000" | gsub("_";""))
+  - .rune_redeem_value == ("450_000_00000000" | gsub("_";""))
+  - .luvi_growth_pct == "0.000000000000000000" # Same as wolf
+---
+########################################################################################
+# THOR.RUNE -> BTC/BTC streaming swaps (100% conversion),
+# as well as (s though arbitrage keeping the pool balanced)
+# symmetrical BTC/BTC -> THOR.RUNE streaming swap
+# (these could be done by different addresses, wolf only noticing the streaming)
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_wolf }}
+coins:
+  - amount: "1_000_000_00000000"
+    asset: "rune"
+memo: "=:BTC/BTC:{{ addr_thor_wolf }}:0/1/10"
+sequence: 0
+---
+type: tx-deposit
+signer: {{ addr_thor_wolf }}
+coins:
+  - amount: "1_000_00000000"
+    asset: "btc/btc"
+memo: "=:THOR.RUNE:{{ addr_thor_wolf }}:0/1/10"
+sequence: 1
+---
+# Go to right before the end of the streaming swap.
+type: create-blocks
+count: 9
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_wolf }}
+asserts:
+  - .asset_redeem_value == ("52_84860144" | gsub("_"; ""))
+  - .rune_redeem_value == ("49_961_56106714" | gsub("_"; ""))
+  - .luvi_growth_pct == "0.027696182213006640"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_goat }}
+asserts:
+  - .asset_redeem_value == ("475_63741299" | gsub("_"; ""))
+  - .rune_redeem_value == ("449_654_04960428" | gsub("_"; ""))
+  - .luvi_growth_pct == "0.027696182213006640"
+---
+########################################################################################
+# wolf withdraws right before the scheduled end of the streaming swap
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_wolf }}
+coins:
+  - amount: "0"
+    asset: "rune"
+memo: "-:BTC.BTC"
+sequence: 2
+---
+# End the streaming swap.
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[.txs[].result.events[]|select(.type == "withdraw")]|length == 1
+  - .txs[].result.events[]|select(.type == "withdraw")|.emit_rune == ("94_781_86625233" | gsub("_";""))
+  # Under 2x the initial rune_redeem_value (noting the asymmetric withdrawal's swap fee),
+  # of which the position's initial total value was 2x.
+---
+########################################################################################
+# wolf re-deposits right after the scheduled end of the streaming swap
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_wolf }}
+coins:
+  - amount: "94_781_86625233"
+    # Same as the withdraw-emitted RUNE,
+    # though wolf could have chosen to deposit less.
+    asset: "rune"
+memo: "+:BTC.BTC"
+sequence: 3
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_wolf }}
+asserts:
+  - .units == ("44_934_13608188" | gsub("_";""))
+  # Contrast with the initial units of "50_000_00000000" .
+  - .asset_redeem_value == ("47_75901598" | gsub("_";""))
+  - .rune_redeem_value == ("45_351_74408535" | gsub("_";""))
+  # Contrast with the initial redeem values of "50_00000000" and "50_000_00000000".
+  # <0.96x now, due to asymmetrical liquidity action swap fees
+  # (not checking luvi_growth_pct which has been reset by the withdraw and deposit).
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_provider/{{ addr_thor_goat }}
+asserts:
+  - .units == ("450_000_00000000" | gsub("_";"")) # Unchanged.
+  - .asset_redeem_value == ("478_29020576" | gsub("_";""))
+  - .rune_redeem_value == ("454_182_20128284" | gsub("_";""))
+  # Contrast with the initial redeem values of "450_00000000" and "450_000_00000000".
+  - .luvi_growth_pct == "0.035734061247638964"

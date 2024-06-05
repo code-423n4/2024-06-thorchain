@@ -1,0 +1,192 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-usdc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/ETH.USDC-0X9999999999999999999999999999999999999999
+asserts:
+  - .asset == "ETH.USDC-0X9999999999999999999999999999999999999999"
+  - .status == "Available"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - 'has("TORANCHOR-ETH-USDC-0X9999999999999999999999999999999999999999") | not'
+---
+########################################################################################
+# deposit usdc (should fail, USDC not in TOR anchor)
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: ETH
+      from_address: {{ addr_eth_pig }}
+      to_address: {{ addr_eth_dog }}
+      coins:
+        - amount: "1000000000"
+          asset: "ETH.USDC-0X9999999999999999999999999999999999999999"
+      gas:
+        - amount: "10000"
+          asset: "ETH.ETH"
+      memo: "+:ETH/USDC-0X9999999999999999999999999999999999999999"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/ETH.USDC-0X9999999999999999999999999999999999999999/savers
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .[0].memo == "REFUND:{{ observe_txid 1 }}"
+  - .[0].coin.amount == "872000000"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_pig }}
+      coins:
+        - amount: "872000000"
+          asset: "ETH.USDC-0X9999999999999999999999999999999999999999"
+      gas:
+        - amount: "10000"
+          asset: "ETH.ETH"
+      memo: "REFUND:{{ observe_txid 1 }}"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: tx-mimir
+key: "TORANCHOR-ETH-USDC-0X9999999999999999999999999999999999999999"
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - '."TORANCHOR-ETH-USDC-0X9999999999999999999999999999999999999999" == 1'
+---
+########################################################################################
+# deposit usdc (should succeed, USDC in TOR anchor)
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 3 }}"
+      chain: ETH
+      from_address: {{ addr_eth_pig }}
+      to_address: {{ addr_eth_dog }}
+      coins:
+        - amount: "1000000000"
+          asset: "ETH.USDC-0X9999999999999999999999999999999999999999"
+      gas:
+        - amount: "10000"
+          asset: "ETH.ETH"
+      memo: "+:ETH/USDC-0X9999999999999999999999999999999999999999"
+    block_height: 3
+    finalise_height: 3
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/supply
+asserts:
+  - .supply[]|select(.denom == "eth/usdc-0x9999999999999999999999999999999999999999")|.amount|tonumber == 990123631
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/ETH.USDC-0X9999999999999999999999999999999999999999/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_address == "{{ addr_eth_pig }}"
+---
+########################################################################################
+# withdraw usdc (should succeed, USDC savers exists)
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 4 }}"
+      chain: ETH
+      from_address: {{ addr_eth_pig }}
+      to_address: {{ addr_eth_dog }}
+      coins:
+        - amount: "10000"
+          asset: "ETH.ETH"
+      gas:
+        - amount: "10000"
+          asset: "ETH.ETH"
+      memo: "-:ETH/USDC-0X9999999999999999999999999999999999999999:10000"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/ETH.USDC-0X9999999999999999999999999999999999999999/savers
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0].memo == "OUT:{{ observe_txid 4 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 5 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_pig }}
+      coins:
+        - amount: "842633900"
+          asset: "ETH.USDC-0X9999999999999999999999999999999999999999"
+      gas:
+        - amount: "960000"
+          asset: "ETH.ETH"
+      memo: "OUT:{{ observe_txid 4 }}"
+    block_height: 5
+    finalise_height: 5
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0

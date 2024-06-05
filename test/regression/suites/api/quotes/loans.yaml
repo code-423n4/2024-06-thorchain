@@ -1,0 +1,174 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-3usdx-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+---
+########################################################################################
+# enable lending
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: TorAnchor-ETH-USDX-0X9999999999999999999999999999999999999999
+value: 1
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - ."TORANCHOR-ETH-USDX-0X9999999999999999999999999999999999999999" == 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+---
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: DerivedDepthBasisPts
+value: 10000
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .DERIVEDDEPTHBASISPTS == 10000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 5
+  - .[0].derived_depth_bps|tonumber == 10000
+  - .[1].derived_depth_bps|tonumber == 10000
+  - .[2].derived_depth_bps|tonumber == 0
+  - .[3].derived_depth_bps|tonumber == 0
+  - .[4].derived_depth_bps|tonumber == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpools
+asserts:
+  - .|length == 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .status == "Available"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.TOR
+asserts:
+  - .status == "Available"
+---
+########################################################################################
+# setup thorname
+########################################################################################
+type: tx-send
+from_address: {{ addr_thor_fox }}
+to_address: {{ addr_thor_pig }}
+amount:
+  - amount: "15000000000"
+    denom: "rune"
+---
+type: create-blocks
+count: 1
+---
+type: tx-deposit
+signer: {{ addr_thor_pig }}
+coins:
+  - amount: "5000000000"
+    asset: "rune"
+memo: "~:test:THOR:{{ addr_thor_pig }}:{{ addr_thor_pig }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/thorname/test
+asserts:
+  - .aliases[0].address == "{{ addr_thor_pig }}"
+  - .owner == "{{ addr_thor_pig }}"
+---
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_pig }}
+asserts:
+  - .result[]|select(.denom == "rune")|.amount == "9998000000"
+---
+########################################################################################
+# quote open BTC -> ETH loan
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 500000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .memo == "$+:THOR.RUNE:{{ addr_thor_fox }}"
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .expected_amount_out|tonumber == 483376169
+  - .expected_collateral_deposited|tonumber == 495049
+  - .expected_collateralization_ratio|tonumber == 10000
+  - .expected_debt_issued|tonumber == 490140000
+  - .streaming_swap_blocks|tonumber == 3
+  - .streaming_swap_seconds|tonumber == 18
+  - .total_open_loan_seconds|tonumber == 618
+  - .recommended_min_amount_in == "56000"
+  - .fees.slippage_bps|tonumber == 145
+  - .fees.total_bps|tonumber == 188
+  - .fees.outbound|tonumber == 2000000
+  - .fees.liquidity|tonumber == 7291890
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+  - .recommended_gas_rate == "10"
+  - .gas_rate_units == "satsperbyte"
+---
+########################################################################################
+# quote open BTC -> ETH loan w/ 50 basis points affiliate
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/loan/open
+params:
+  from_asset: BTC.BTC
+  amount: 500000
+  to_asset: RUNE
+  destination: {{ addr_thor_fox }}
+  affiliate: test
+  affiliate_bps: 50
+asserts:
+  - .memo == "$+:THOR.RUNE:{{ addr_thor_fox }}:0:test:50"
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .expected_amount_out|tonumber == 481022567
+  - .expected_collateral_deposited|tonumber == 492598
+  - .expected_collateralization_ratio|tonumber == 10000
+  - .expected_debt_issued|tonumber == 487740000
+  - .streaming_swap_blocks|tonumber == 3
+  - .streaming_swap_seconds|tonumber == 18
+  - .total_open_loan_seconds|tonumber == 618
+  - .recommended_min_amount_in == "56000"
+  - .fees.slippage_bps|tonumber == 144
+  - .fees.total_bps|tonumber == 237
+  - .fees.outbound|tonumber == 2000000
+  - .fees.liquidity|tonumber == 7220551
+  - .fees.affiliate|tonumber == 2499904
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)+(.fees.affiliate|tonumber)
+  - .recommended_gas_rate == "10"
+  - .gas_rate_units == "satsperbyte"
+---

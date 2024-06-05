@@ -1,0 +1,456 @@
+# set synth multiplier to 1x for accurate comparison against synth swaps
+type: env
+key: VIRTUAL_MULT_SYNTHS_BASIS_POINTS
+value: "10000"
+---
+{{ template "5-validators-btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 2
+---
+type: tx-mimir
+key: TradeAccountsEnabled
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# deposit btc
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_cat }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000000" # .1 BTC
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "trade+:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: tx-observed-in
+signer: {{ addr_thor_pig }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000000" # .1 BTC
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "trade+:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: tx-observed-in
+signer: {{ addr_thor_fox }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000000" # .1 BTC
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "trade+:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: tx-observed-in
+signer: {{ addr_thor_goat }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000000" # .1 BTC
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "trade+:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/unit/BTC~BTC
+asserts:
+  - .asset == "BTC~BTC"
+  - .units|tonumber == 10000000
+  - .depth|tonumber == 10000000
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == 10000000
+  - .[0].owner == "{{ addr_thor_fox }}"
+---
+# Swap trade asset to trade asset, quote should match actual
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "BTC~BTC"
+  to_asset: "ETH~ETH"
+  destination: {{ addr_thor_fox }}
+  amount: 5000000
+asserts:
+  - .expected_amount_out|tonumber == 41501780
+  - .fees|.outbound|tonumber == 0
+  - .fees|.liquidity|tonumber == 4149740
+  - .fees|.total|tonumber == 4149740
+  - .fees|.slippage_bps == 909
+  - .fees|.total_bps == 909
+---
+# synth swap should be equivalent, with additional outbound fee
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "BTC/BTC"
+  to_asset: "ETH/ETH"
+  destination: {{ addr_thor_fox }}
+  amount: 5000000
+asserts:
+  - .expected_amount_out|tonumber == 41501780 - 19132 # minus outbound fee
+  - .fees|.outbound|tonumber == 19132
+  - .fees|.liquidity|tonumber == 4149740
+  - .fees|.total|tonumber == 4149740 + 19132
+  - .fees|.slippage_bps == 909
+  - .fees|.total_bps == 912
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "5000000" # 0.05 BTC
+    asset: "BTC~BTC"
+memo: "=:ETH~ETH:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+# we swapped 0.05 BTC~BTC to ETH~ETH,
+# we should have 0.05 BTC~BTC remaining, and ETH~ETH
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 2
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == 5000000 # 0.05 BTC
+  - .[0].owner == "{{ addr_thor_fox }}"
+  - .[1].asset == "ETH~ETH"
+  - .[1].units|tonumber == 41501780 # 0.41 ETH
+---
+# swap half ETH~ETH to BTC~BTC, quote should match actual
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "ETH~ETH"
+  to_asset: "BTC~BTC"
+  destination: {{ addr_thor_fox }}
+  amount: 20750890
+asserts:
+  - .expected_amount_out|tonumber == 2280072
+  - .fees|.total_bps == 433
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "20750890" # 0.2 ETH
+    asset: "ETH~ETH"
+memo: "=:BTC~BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 2
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == 7280072
+  - .[0].owner == "{{ addr_thor_fox }}"
+  - .[1].asset == "ETH~ETH"
+  - .[1].units|tonumber == 20750890 # 0.2 ETH
+---
+# stream swap remaining ETH, quote should match actual
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "ETH~ETH"
+  to_asset: "BTC~BTC"
+  destination: {{ addr_thor_fox }}
+  amount: 20750890
+  streaming_interval: 1
+asserts:
+  - .expected_amount_out|tonumber == 2233656
+  - .fees|.total_bps == 107
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "20750890" # 0.2 ETH
+    asset: "ETH~ETH"
+memo: "=:BTC~BTC:{{ addr_thor_fox }}:0/1/0"
+---
+type: create-blocks
+count: 1
+---
+# check for streaming swap
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 1 # streaming swap in progress complete
+  - .[0].destination == "{{ addr_thor_fox }}"
+  - .[0].quantity == 4
+  - .[0].source_asset == "ETH~ETH"
+  - .[0].target_asset == "BTC~BTC"
+  - .[0].deposit|tonumber == 20750890
+---
+type: create-blocks
+count: 4
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == 9444753
+  - .[0].owner == "{{ addr_thor_fox }}"
+---
+########################################################################################
+# trade accounts respects slip min bps
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "BTC~BTC"
+  to_asset: "ETH~ETH"
+  destination: {{ addr_thor_fox }}
+  amount: 10000
+asserts:
+  - .expected_amount_out|tonumber == 98903
+  - .fees.total_bps == 1
+---
+type: tx-mimir
+signer: {{ addr_thor_cat }}
+key: "SwapSlipBasisPointsMin-TradeAccount"
+value: 1000
+---
+type: tx-mimir
+signer: {{ addr_thor_pig }}
+key: "SwapSlipBasisPointsMin-TradeAccount"
+value: 1000
+---
+type: tx-mimir
+signer: {{ addr_thor_fox }}
+key: "SwapSlipBasisPointsMin-TradeAccount"
+value: 1000
+---
+type: tx-mimir
+signer: {{ addr_thor_goat }}
+key: "SwapSlipBasisPointsMin-TradeAccount"
+value: 1000
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: "BTC~BTC"
+  to_asset: "ETH~ETH"
+  destination: {{ addr_thor_fox }}
+  amount: 10000
+asserts:
+  - .expected_amount_out|tonumber == 89022
+  - .fees.total_bps == 1000
+---
+########################################################################################
+# try obtaining THOR.BTC with EnabledDerivedAssets 0
+########################################################################################
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_fox }}
+asserts:
+  - .result | length == 1
+  - .result[0].denom == "rune"
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_dog }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: tx-mimir
+key: EnableDerivedAssets
+value: 0
+signer: {{ addr_thor_dog }}
+sequence: 1
+---
+type: tx-mimir
+key: DerivedDepthBasisPts
+value: 10000
+signer: {{ addr_thor_dog }}
+sequence: 2
+---
+type: create-blocks
+count: 2 # One block to set the Mimirs by the end, one to spawn the THOR.BTC pool at the beginning.
+---
+# Confirm the Mimir values
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .["DerivedDepthBasisPts" | ascii_upcase] == 10000
+  - .["EnableDerivedAssets" | ascii_upcase] == 0
+  - .["SwapSlipBasisPointsMin-TradeAccount" | ascii_upcase] == 1000
+  - .["TradeAccountsEnabled" | ascii_upcase] == 1
+---
+# Confirm that the THOR.BTC pool exists.
+type: check
+endpoint: http://localhost:1317/thorchain/dpool/THOR.BTC
+asserts:
+  - .asset == "THOR.BTC"
+  - .status == "Available"
+  - .balance_asset | tonumber > 0
+  - .balance_rune | tonumber > 0
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000" # 0.01 BTC
+    asset: "BTC~BTC"
+memo: "=:THOR~BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 1
+  - .|..|select(.type? == "refund").reason | contains("swapping to a trade asset of a native coin is not allowed")
+---
+########################################################################################
+# swap to RUNE (for instance if there were an arbitrage opportunity)
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == ${INITIAL_UNITS=9444753}
+  - .[0].owner == "{{ addr_thor_fox }}"
+---
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_fox }}
+asserts:
+  - .result | length == 1
+  - .result[0].denom == "rune"
+  - .result[0].amount == "${INITIAL_RUNE=2499992000000}"
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000" # 0.01 BTC
+    asset: "BTC~BTC"
+memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber < ${INITIAL_UNITS}
+  - .[0].owner == "{{ addr_thor_fox }}"
+---
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_fox }}
+asserts:
+  - .result | length == 1
+  - .result[0].denom == "rune"
+  - .result[0].amount|tonumber > ${INITIAL_RUNE} # Swap to RUNE succeeds.
+---
+########################################################################################
+# swap from RUNE
+########################################################################################
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_fox }}
+asserts:
+  - .result | length == 1
+  - .result[0].denom == "rune"
+  - .result[0].amount|tonumber == ${INITIAL_RUNE=2500960512608}
+---
+type: check
+endpoint: http://localhost:1317/thorchain/network
+asserts:
+  - .native_tx_fee_rune == "${NATIVE_TX_FEE_RUNE=2000000}"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber == ${INITIAL_UNITS=8444753}
+  - .[0].owner == "{{ addr_thor_fox }}"
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000000"
+    asset: "THOR.RUNE"
+memo: "=:BTC~BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/bank/balances/{{ addr_thor_fox }}
+asserts:
+  - .result | length == 1
+  - .result[0].denom == "rune"
+  - .result[0].amount|tonumber < ${INITIAL_RUNE} - ${NATIVE_TX_FEE_RUNE}
+---
+type: check
+endpoint: http://localhost:1317/thorchain/trade/account/{{ addr_thor_fox }}
+asserts:
+  - .|length == 1
+  - .[0].asset == "BTC~BTC"
+  - .[0].units|tonumber > ${INITIAL_UNITS} # Swap from RUNE succeeds.
+  - .[0].owner == "{{ addr_thor_fox }}"

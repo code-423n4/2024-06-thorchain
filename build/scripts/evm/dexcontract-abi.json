@@ -1,0 +1,41 @@
+[
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "index",
+        "type": "uint256"
+      }
+    ],
+    "name": "BasicLog",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "routerAddr", "type": "address" },
+      { "internalType": "address payable", "name": "vault", "type": "address" },
+      { "internalType": "address", "name": "asset", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "string", "name": "memo", "type": "string" }
+    ],
+    "name": "callDeposit",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "routerAddr", "type": "address" },
+      { "internalType": "address payable", "name": "vault", "type": "address" },
+      { "internalType": "address", "name": "asset", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+      { "internalType": "string", "name": "memo", "type": "string" }
+    ],
+    "name": "callDepositWithLogs",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

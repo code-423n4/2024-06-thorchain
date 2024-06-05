@@ -1,0 +1,17 @@
+# Base image for running thornode.
+FROM registry.gitlab.com/thorchain/thornode:builder-v5@sha256:33a2345924750d45a7e9060f429f66ddc1888482e6ef73e2358a23024dc41f01
+
+ENV GOBIN=/go/bin
+ENV GOPATH=/go
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+RUN mkdir /simtest
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/root/.cache/go-build make _build-test-simulation

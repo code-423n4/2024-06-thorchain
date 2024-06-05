@@ -1,0 +1,41 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+# TODO create a real test, tricky since you need keygen block, etc
+---
+type: tx-tss-pool
+signer: {{ addr_thor_dog }}
+pool_pub_key: {{ pubkey_dog }}
+keygen_type: "Asgard"
+pub_keys:
+- {{ pubkey_dog }}
+- {{ pubkey_dog }}
+chains:
+- THOR
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_dog }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: tx-tss-pool
+signer: {{ addr_thor_fox }}
+keygen_type: "Asgard"
+pool_pub_key: {{ pubkey_fox }}
+pub_keys:
+- {{ pubkey_fox }}
+- {{ pubkey_fox }}
+chains:
+- THOR
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence|length == 0

@@ -1,0 +1,9 @@
+default: true
+html: false
+indentation: false
+line_length: false
+spaces: false
+url: false
+whitespace: false
+
+MD029: false

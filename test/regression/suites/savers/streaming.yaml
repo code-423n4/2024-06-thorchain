@@ -1,0 +1,416 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-3usdx-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# deposit savers (non-streaming, quote only)
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/deposit
+params:
+  asset: BTC.BTC
+  amount: 10000000
+asserts:
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .expected_amount_deposit|tonumber == 9074019
+  - .dust_threshold|tonumber == 10000
+  - .fees.liquidity|tonumber == 1167318
+  - .fees.outbound|tonumber == 2200
+  - .fees.slippage_bps|tonumber == 1139
+  - .fees.total|tonumber == 1169518
+  - .fees.total_bps|tonumber == 1141
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+---
+########################################################################################
+# enable streaming savers
+########################################################################################
+type: tx-mimir
+signer: {{ addr_thor_dog }}
+key: SaversStreamingSwapsInterval
+value: 1
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# streaming savers deposit (quote)
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/deposit
+params:
+  asset: BTC.BTC
+  amount: 10000000
+asserts:
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .expected_amount_deposit|tonumber == 9949990
+  - .dust_threshold|tonumber == 10000
+  - .fees.liquidity|tonumber == 74000
+  - .fees.outbound|tonumber == 2010
+  - .fees.slippage_bps|tonumber == 73
+  - .fees.total|tonumber == 76010
+  - .fees.total_bps|tonumber == 75
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+---
+########################################################################################
+# streaming savers deposit
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 21
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 9952391
+---
+########################################################################################
+# streaming savers withdraw (quote)
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/withdraw
+params:
+  asset: BTC.BTC
+  withdraw_bps: 10000
+  address: "{{ addr_btc_pig }}"
+asserts:
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .dust_amount|tonumber == 20000
+  - .dust_threshold|tonumber == 10000
+  - .expected_amount_out|tonumber == 9839092
+  - .fees.liquidity|tonumber == 74160
+  - .fees.outbound|tonumber == 14000
+  - .fees.slippage_bps|tonumber == 74
+  - .fees.total|tonumber == 88160
+  - .fees.total_bps|tonumber == 88
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+---
+########################################################################################
+# streaming savers affiliate tests
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_thor_fish }}
+asserts:
+  - .units == "0" # No Savers position for the address to be used as the Affiliate's THOR Alias.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_btc_fish }}
+asserts:
+  - .units == "0" # No Savers position for the address to be used as the Affiliate's BTC Alias.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0 # No pending outbounds.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 0 # No ongoing streaming swaps.
+---
+###########################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "${IN_TXID={{ observe_txid 2 }}}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${IN_AMOUNT=1500000}"
+          asset: "${IN_ASSET=BTC.BTC}"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC::nothorname:1000" # Non-existent thorname.
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 1
+  - .|..|select(.type? == "refund") | .reason | contains("fail to refund") | not # Refund possible.
+  - .|..|select(.type? == "refund") | .reason | contains("nothorname is not recognizable")
+  - .|..|select(.type? == "refund") | .coin == "${IN_AMOUNT} ${IN_ASSET}"
+  # Input-asset refund, not a synth after swapping.
+  # Amount is for the full inbound (unsplit by affiliate fee).
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0].coin.asset == "${IN_ASSET}"
+  - .[0].coin.amount == "${OUT_AMOUNT=1486000}"
+  - .| ${OUT_AMOUNT} > ${IN_AMOUNT} * 95/100 # Full inbound amount, minus outbound fee.
+  - .[0].max_gas[0].amount == "${OUT_GAS_AMOUNT=10500}"
+  - .[0].memo == "REFUND:${IN_TXID}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 3 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "${OUT_AMOUNT}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "${OUT_GAS_AMOUNT}"
+          asset: "BTC.BTC"
+      memo: "REFUND:${IN_TXID}"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0 # No pending outbounds.
+---
+###########################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "2000000000"
+    asset: "rune"
+memo: "NAME:fishthorname:THOR:{{ addr_thor_fish }}"
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "${IN_TXID={{ observe_txid 4 }}}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${IN_AMOUNT=1500000}"
+          asset: "${IN_ASSET=BTC.BTC}"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC::fishthorname:1000" # THOR-Alias-only THORName.
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/thorname/fishthorname
+asserts:
+  - .owner == "{{ addr_thor_fox }}"
+  - .aliases | length == 1
+  - .aliases == [{"address":"{{ addr_thor_fish }}","chain":"THOR"}]
+  # THOR Alias only.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 1
+  - .|..|select(.type? == "refund") | .reason | contains("fail to refund") | not # Refund possible.
+  - .|..|select(.type? == "refund") | .reason | contains("affiliate address is empty while affiliate basis points is non-zero")
+  - .|..|select(.type? == "refund") | .coin == "${IN_AMOUNT} ${IN_ASSET}"
+  # Input-asset refund, not a synth after swapping.
+  # Amount is for the full inbound (unsplit by affiliate fee).
+  # (So when the Affiliate doesn't have an Alias of the needed chain, the inbound is refunded immediately
+  #  rather than swapped to synth and then unrefundable synth cleaned up.)
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0].coin.asset == "${IN_ASSET}"
+  - .[0].coin.amount == "${OUT_AMOUNT=1486000}"
+  - .| ${OUT_AMOUNT} > ${IN_AMOUNT} * 95/100 # Full inbound amount, minus outbound fee.
+  - .[0].max_gas[0].amount == "${OUT_GAS_AMOUNT=10500}"
+  - .[0].memo == "REFUND:${IN_TXID}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 5 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "${OUT_AMOUNT}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "${OUT_GAS_AMOUNT}"
+          asset: "BTC.BTC"
+      memo: "REFUND:${IN_TXID}"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+###########################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "2000000000"
+    asset: "rune"
+memo: "NAME:fishthorname:BTC:{{ addr_btc_fish }}" # BTC Alias.
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "${IN_TXID={{ observe_txid 6 }}}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${IN_AMOUNT=1500000}"
+          asset: "${IN_ASSET=BTC.BTC}"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC::fishthorname:1000" # BTC-Alias-present THORName.
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/thorname/fishthorname
+asserts:
+  - .owner == "{{ addr_thor_fox }}"
+  - .aliases | length == 2
+  - .aliases == [{"address":"{{ addr_thor_fish }}","chain":"THOR"},{"address":"{{ addr_btc_fish }}","chain":"BTC"}]
+  # THOR and BTC Aliases.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 1
+  - .[0].tx_id == "${IN_TXID}"
+  - .[0].count == 1
+  - .[0].quantity == 2
+  - .[0].deposit == "${IN_AMOUNT}"
+  # The Savers add is streaming, and the streaming swap is the full unsplit amount.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_btc_fish }}
+asserts:
+  - .units = "0" # Savers position yet for the Affiliate's BTC address.
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_btc_fish }}
+asserts:
+  - .units = "${SAVER_UNITS=148982}" # Successful Savers add for the Affiliate BTC address.
+---
+###########################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "${IN_TXID={{ observe_txid 7 }}}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${IN_AMOUNT=1500000}"
+          asset: "${IN_ASSET=BTC.BTC}"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC::{{ addr_btc_fish }}:1000" # BTC Affiliate Address directly, with no THORName.
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .|[..|select(.type? == "refund")] | length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 1
+  - .[0].tx_id == "${IN_TXID}"
+  - .[0].count == 1
+  - .[0].quantity == 2
+  - .[0].deposit == "${IN_AMOUNT}"
+  # The Savers add is streaming, and the streaming swap is the full unsplit amount.
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_btc_fish }}
+asserts:
+  - .units == "${SAVER_UNITS}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/saver/{{ addr_btc_fish }}
+asserts:
+  - .units | tonumber > ${SAVER_UNITS} # Successful Savers add for the Affiliate BTC address.

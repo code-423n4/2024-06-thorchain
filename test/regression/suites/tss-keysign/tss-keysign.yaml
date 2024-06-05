@@ -1,0 +1,51 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+# TODO create a real test, setup up an outbound like observer-txout
+---
+type: tx-tss-keysign
+signer: {{ addr_thor_dog }}
+id: "{{ observe_txid 1 }}"
+pub_key: "{{ pubkey_dog }}"
+height: 1
+coins:
+- asset: "BTC.BTC"
+  amount: "1"
+memo: "doesn't matter"
+blame:
+  round: "SignRound1Message"
+  fail_reason: "doesn't matter"
+  blame_nodes:
+    - pubkey: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_dog }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: tx-tss-keysign
+signer: {{ addr_thor_fox }}
+id: "{{ observe_txid 1 }}"
+pub_key: "{{ pubkey_dog }}"
+height: 1
+coins:
+- asset: "BTC.BTC"
+  amount: "1"
+memo: "doesn't matter"
+blame:
+  round: "SignRound1Message"
+  fail_reason: "doesn't matter"
+  blame_nodes:
+    - pubkey: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence|length == 0

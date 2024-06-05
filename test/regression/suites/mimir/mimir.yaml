@@ -1,0 +1,45 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: tx-mimir
+key: RegressionTest
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_dog }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .REGRESSIONTEST == 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir/key/REGRESSIONTEST
+asserts:
+  - . == 1
+---
+type: tx-mimir
+key: FoxTest
+value: 1
+signer: {{ addr_thor_fox }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .FOXTEST|length == 0

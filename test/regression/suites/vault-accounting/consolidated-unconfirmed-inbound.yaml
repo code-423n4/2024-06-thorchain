@@ -1,0 +1,143 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 2
+---
+########################################################################################
+# swap to rune with conf counting
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${INBOUND_AMOUNT=5000000}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 1
+    finalise_height: 3
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+# inbound should not be finalised
+type: check
+endpoint: http://localhost:1317/thorchain/tx/status/{{ observe_txid 1 }}
+asserts:
+  - .stages.inbound_finalised.completed == false
+---
+# asgard vault balance should not be updated
+type: check
+endpoint: http://localhost:1317/thorchain/vaults/asgard
+asserts:
+  - .[0]|.coins[]|select(.asset == "BTC.BTC")|.amount|tonumber == ${VAULT_AMOUNT=100000000}
+  - ${UNCONFIRMED_VAULT_BALANCE=105000000} == ${VAULT_AMOUNT} + ${INBOUND_AMOUNT}
+---
+########################################################################################
+# consolidate inbound amount
+########################################################################################
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${UNCONFIRMED_VAULT_BALANCE}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "${CONSOLIDATE_GAS=10000}"
+          asset: "BTC.BTC"
+      memo: "consolidate"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+# asgard vault balance should lose consolidate gas
+type: check
+endpoint: http://localhost:1317/thorchain/vaults/asgard
+asserts:
+  - .[0]|.coins[]|select(.asset == "BTC.BTC")|.amount|tonumber == ${VAULT_AMOUNT}-${CONSOLIDATE_GAS}
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${UNCONFIRMED_VAULT_BALANCE}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "${CONSOLIDATE_GAS}"
+          asset: "BTC.BTC"
+      memo: "consolidate"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+# asgard vault balance should remain the same
+type: check
+endpoint: http://localhost:1317/thorchain/vaults/asgard
+asserts:
+  - .[0]|.coins[]|select(.asset == "BTC.BTC")|.amount|tonumber == ${VAULT_AMOUNT}-${CONSOLIDATE_GAS}
+---
+########################################################################################
+# finalize inbound conf counting
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "${INBOUND_AMOUNT}"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 3
+    finalise_height: 3
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+# asgard vault balance should include finalized inbound
+type: check
+endpoint: http://localhost:1317/thorchain/vaults/asgard
+asserts:
+  - .[0]|.coins[]|select(.asset == "BTC.BTC")|.amount|tonumber == ${VAULT_AMOUNT}-${CONSOLIDATE_GAS}+${INBOUND_AMOUNT}

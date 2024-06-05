@@ -1,0 +1,54 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# swap to evm null address
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "1000000000"
+    asset: "rune"
+memo: "=:ETH.ETH:0x0000000000000000000000000000000000000000"
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# should not leave anything in queues
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/queue/swap
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/scheduled
+asserts:
+  - .|length == 0
+---
+########################################################################################
+# should emit security event
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.end_block_events[]|select(.type == "security")]|length == 1'
+  - .end_block_events[]|select(.type == "security")|.msg = "evm outbound to null address"
+---
+########################################################################################
+# vault will have more than pool
+########################################################################################
+type: fail-export-invariants

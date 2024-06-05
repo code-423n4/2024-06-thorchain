@@ -1,0 +1,99 @@
+type: env
+key: SIGNING_TRANSACTION_PERIOD
+value: "3"
+---
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "10000000000"
+    asset: "rune"
+memo: "=:BTC.BTC:{{ addr_btc_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .[0].in_hash == "D96B553D63BCC6DB749B184F566BF0B37B595B026E9AA7B35B5C7D654237C965"
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# round 7 failure should freeze the vault
+########################################################################################
+type: tx-tss-keysign
+signer: {{ addr_thor_dog }}
+pub_key: "tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4"
+id: "43919a6ec98353bac5030b4db64e36abe299f91ab26c2c8442a42595a772c280"
+memo: "OUT:D96B553D63BCC6DB749B184F566BF0B37B595B026E9AA7B35B5C7D654237C965"
+coins:
+  - amount: "8250426"
+    asset: "BTC.BTC"
+blame:
+  round: "SignRound7Message"
+  fail_reason: "yolo"
+  blame_nodes:
+    - pubkey: {{ pubkey_dog }}
+height: 100
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/vault/tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+asserts:
+  - .frozen|length == 1
+  - .frozen[0] == "BTC"
+---
+########################################################################################
+# outbound should reschedule to the same vault after the signing period
+########################################################################################
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .[0].in_hash == "D96B553D63BCC6DB749B184F566BF0B37B595B026E9AA7B35B5C7D654237C965"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "D96B553D63BCC6DB749B184F566BF0B37B595B026E9AA7B35B5C7D654237C965"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_fox }}
+      coins:
+        - amount: "8250426"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "OUT:D96B553D63BCC6DB749B184F566BF0B37B595B026E9AA7B35B5C7D654237C965"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: "tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/vault/tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+asserts:
+  - has("frozen")|not
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0

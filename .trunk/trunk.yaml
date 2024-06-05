@@ -1,0 +1,81 @@
+version: 0.1
+cli:
+  version: 1.22.1
+repo:
+  trunk_branch: develop
+lint:
+  definitions:
+    - name: codespell
+      commands:
+        - run: codespell --uri-ignore-words-list=* --ignore-words=${workspace}/.trunk/configs/words.txt ${target}
+  enabled:
+    # TODO: enable these new suggested linters and see which are worth keeping/fixing up codebase.
+    #- bandit@1.7.5
+    #- checkov@2.3.316
+    #- gokart@0.5.1
+    #- osv-scanner@1.3.6
+    #- oxipng@8.0.0
+    #- ruff@0.0.277
+    #- terrascan@1.18.1
+    #- trivy@0.43.1
+    #- trufflehog@3.44.0
+    - codespell@2.2.6
+    - black@24.4.2
+    - flake8@7.0.0
+    - git-diff-check
+    - gofmt@1.20.4
+    - golangci-lint@1.57.2
+    - hadolint@2.12.0
+    - isort@5.13.2
+    - markdownlint@0.40.0
+    - prettier@3.2.5
+    - shellcheck@0.10.0
+    - shfmt@3.6.0
+    - taplo@0.8.1
+    - yamllint@1.35.1
+  ignore:
+    - linters: [ALL]
+      paths:
+        - openapi/gen
+        - "**/*gen.go"
+    - linters:
+        - prettier
+        - yamllint
+      paths:
+        - test/fixtures/endpoints/auth/accounts/malformed.json
+        - test/regression/README.md
+        - test/regression/mnt/exports/**
+        - test/regression/mnt/blocks/**
+        - test/regression/suites/**
+        - test/regression/templates/**
+    - linters:
+        - hadolint
+        - terrascan
+      paths:
+        - ci/Dockerfile.regtest.dockerignore
+        - ci/Dockerfile.simtest.dockerignore
+    - linters:
+        - codespell
+      paths:
+        - bifrost/pkg/chainclients/gaia/test-data/latest_block.json
+        - common/tokenlist/*/*.json
+        - x/thorchain/preregister_thornames.json
+        - third_party/**
+        - test/regression/mnt/blocks/**
+actions:
+  disabled:
+    - trunk-announce
+    - trunk-check-pre-push
+    - trunk-fmt-pre-commit
+  enabled:
+    - trunk-upgrade-available
+plugins:
+  sources:
+    - id: trunk
+      ref: v1.5.0
+      uri: https://github.com/trunk-io/plugins
+runtimes:
+  enabled:
+    - go@1.22.2
+    - node@18.12.1
+    - python@3.10.8

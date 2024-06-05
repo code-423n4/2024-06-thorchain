@@ -1,0 +1,97 @@
+{{ template "5-validators-btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: THOR.RUNE
+  to_asset: BTC/BTC
+  amount: 20000000
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .fees.liquidity == "1"
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+---
+# before fee floor
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "20000000"
+    asset: "rune"
+memo: "=:BTC/BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .end_block_events[] | select(.type == "swap") | .swap_slip == "1"
+  - .end_block_events[] | select(.type == "swap") | .pool_slip == "1"
+  - .end_block_events[] | select(.type == "swap") | .liquidity_fee == "1"
+  - .end_block_events[] | select(.type == "swap") | .liquidity_fee_in_rune == "1000"
+  - .end_block_events[] | select(.type == "swap") | .emit_asset == "19995 BTC/BTC"
+---
+type: create-blocks
+count: 1
+---
+# set fee floor
+type: tx-mimir
+key: "SwapSlipBasisPointsMin-Synth"
+value: 500
+signer: {{ addr_thor_cat }}
+---
+type: tx-mimir
+key: "SwapSlipBasisPointsMin-Synth"
+value: 500
+signer: {{ addr_thor_pig }}
+---
+type: tx-mimir
+key: "SwapSlipBasisPointsMin-Synth"
+value: 500
+signer: {{ addr_thor_fox }}
+---
+type: tx-mimir
+key: "SwapSlipBasisPointsMin-Synth"
+value: 500
+signer: {{ addr_thor_goat }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .["SwapSlipBasisPointsMin-Synth" | ascii_upcase] == 500
+---
+type: check
+endpoint: http://localhost:1317/thorchain/quote/swap
+params:
+  from_asset: THOR.RUNE
+  to_asset: BTC/BTC
+  amount: 20000000
+  destination: {{ addr_thor_fox }}
+asserts:
+  - .fees.liquidity == "999"
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "20000000"
+    asset: "rune"
+memo: "=:BTC/BTC:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - .end_block_events[] | select(.type == "swap") | .swap_slip == "500"
+  - .end_block_events[] | select(.type == "swap") | .pool_slip == "1"
+  - .end_block_events[] | select(.type == "swap") | .liquidity_fee == "999"
+  - .end_block_events[] | select(.type == "swap") | .liquidity_fee_in_rune == "999207"
+  - .end_block_events[] | select(.type == "swap") | .emit_asset == "18994 BTC/BTC"

@@ -1,0 +1,86 @@
+package utxo
+
+import (
+	"encoding/base64"
+  "fmt"
+	"math/big"
+
+	"github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/rs/zerolog"
+
+  {{- range $chain, $pkg := . }}
+  {{ $chain }}ec "{{ $pkg }}"
+  {{- end }}
+
+	"gitlab.com/thorchain/thornode/bifrost/tss"
+	"gitlab.com/thorchain/thornode/common"
+	"gitlab.com/thorchain/thornode/common/cosmos"
+)
+
+{{- range $chain, $pkg := . }}
+
+type tssSignable{{ ToUpper $chain }} struct {
+	poolPubKey    common.PubKey
+	tssKeyManager tss.ThorchainKeyManager
+	log           zerolog.Logger
+}
+
+func newTssSignable{{ ToUpper $chain }}(poolPubKey common.PubKey, tssKeyManager tss.ThorchainKeyManager, log zerolog.Logger) *tssSignable{{ ToUpper $chain }} {
+	return &tssSignable{{ ToUpper $chain }}{
+		poolPubKey:    poolPubKey,
+		tssKeyManager: tssKeyManager,
+		log:           log,
+	}
+}
+
+{{- if eq $chain "bch" }}
+func (ts *tssSignable{{ ToUpper $chain }}) SignECDSA(payload []byte) (*{{ $chain }}ec.Signature, error) {
+{{- else }}
+func (ts *tssSignable{{ ToUpper $chain }}) Sign(payload []byte) (*{{ $chain }}ec.Signature, error) {
+{{- end }}
+	ts.log.Info().Msgf("msg to sign: %s", base64.StdEncoding.EncodeToString(payload))
+	result, _, err := ts.tssKeyManager.RemoteSign(payload, ts.poolPubKey.String())
+	if err != nil {
+		return nil, err
+	}
+	var sig {{ $chain }}ec.Signature
+	sig.R = new(big.Int).SetBytes(result[:32])
+	sig.S = new(big.Int).SetBytes(result[32:])
+
+	// verify the signature
+	if sig.Verify(payload, ts.GetPubKey()) {
+		ts.log.Info().Msg("we can verify the signature successfully")
+	} else {
+		ts.log.Info().Msg("the signature can't be verified")
+	}
+
+	return &sig, nil
+}
+
+{{- if eq $chain "bch" }}
+// SignSchnorr signs the given payload using Schnorr
+func (ts *tssSignable{{ ToUpper $chain }}) SignSchnorr(payload []byte) (*{{ $chain }}ec.Signature, error) {
+	return nil, fmt.Errorf("schnorr signature not yet implemented in TSS")
+}
+{{- end }}
+
+func (ts *tssSignable{{ ToUpper $chain }}) GetPubKey() *{{ $chain }}ec.PublicKey {
+	cpk, err := cosmos.GetPubKeyFromBech32(cosmos.Bech32PubKeyTypeAccPub, ts.poolPubKey.String())
+	if err != nil {
+		ts.log.Err(err).Str("pubkey", ts.poolPubKey.String()).Msg("fail to get pubic key from the bech32 pool public key string")
+		return nil
+	}
+	secpPubKey, err := codec.ToTmPubKeyInterface(cpk)
+	if err != nil {
+		ts.log.Err(err).Msgf("%s is not a secp256 k1 public key", ts.poolPubKey)
+		return nil
+	}
+	newPubkey, err := {{ $chain }}ec.ParsePubKey(secpPubKey.Bytes(), {{ $chain }}ec.S256())
+	if err != nil {
+		ts.log.Err(err).Msg("fail to parse public key")
+		return nil
+	}
+	return newPubkey
+}
+
+{{- end }}

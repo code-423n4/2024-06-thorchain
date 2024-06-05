@@ -1,0 +1,61 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# send twice with the same sequence number
+########################################################################################
+type: tx-send
+from_address: {{ addr_thor_cat }}
+to_address: {{ addr_thor_fox }}
+amount:
+  - denom: rune
+    amount: "100000000"
+---
+type: tx-send
+from_address: {{ addr_thor_cat }}
+to_address: {{ addr_thor_fox }}
+amount:
+  - denom: rune
+    amount: "200000000"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances[]|select(.denom=="rune")|.amount|tonumber == 2500100000000
+---
+type: check
+endpoint: http://localhost:1317/cosmos/tx/v1beta1/txs/{{ native_txid -1 }}
+asserts:
+  - .tx_response.code == 0
+---
+########################################################################################
+# send twice with distinct sequence numbers
+########################################################################################
+type: tx-send
+from_address: {{ addr_thor_cat }}
+to_address: {{ addr_thor_fox }}
+amount:
+  - denom: rune
+    amount: "100000000"
+sequence: 1
+---
+type: tx-send
+from_address: {{ addr_thor_cat }}
+to_address: {{ addr_thor_fox }}
+amount:
+  - denom: rune
+    amount: "200000000"
+sequence: 2
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances[]|select(.denom=="rune")|.amount|tonumber == 2500400000000

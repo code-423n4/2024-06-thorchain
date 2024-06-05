@@ -1,0 +1,48 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: tx-set-ip-address
+signer: {{ addr_thor_dog }}
+ip_address: "10.0.0.1"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/node/{{ addr_thor_dog }}
+asserts:
+  - .ip_address == "10.0.0.1"
+---
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - asset: "rune"
+    amount: "1"
+memo: "BOND:{{ addr_thor_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/node/{{ addr_thor_fox }}
+asserts:
+  - .total_bond == "1"
+---
+type: tx-set-ip-address
+signer: {{ addr_thor_fox }}
+ip_address: "10.0.0.2"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence == "1"

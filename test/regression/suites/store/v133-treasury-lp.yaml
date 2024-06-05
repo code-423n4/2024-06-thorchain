@@ -1,0 +1,197 @@
+type: state
+genesis:
+  initial_height: "0"
+  app_state:
+    auth:
+      accounts:
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "0"
+            address: {{ addr_module_transfer }}
+            pub_key: ~
+            sequence: "0"
+          name: transfer
+          permissions:
+            - minter
+            - burner
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "1"
+            address: {{ addr_module_asgard }}
+            pub_key: ~
+            sequence: "0"
+          name: asgard
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "2"
+            address: {{ addr_module_thorchain }}
+            pub_key: ~
+            sequence: "0"
+          name: thorchain
+          permissions:
+            - minter
+            - burner
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "3"
+            address: {{ addr_module_reserve }}
+            pub_key: ~
+            sequence: "0"
+          name: reserve
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "4"
+            address: {{ addr_module_fee_collector }}
+            pub_key: ~
+            sequence: "0"
+          name: fee_collector
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.ModuleAccount
+          base_account:
+            account_number: "5"
+            address: {{ addr_module_bond }}
+            pub_key: ~
+            sequence: "0"
+          name: bond
+          permissions: []
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_dog }}
+          pub_key: null
+          account_number: "6"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_cat }}
+          pub_key: null
+          account_number: "7"
+          sequence: "0"
+        - "@type": /cosmos.auth.v1beta1.BaseAccount
+          address: {{ addr_thor_fox }}
+          pub_key: null
+          account_number: "8"
+          sequence: "0"
+    bank:
+      balances:
+        - address: {{ addr_thor_dog }}
+          coins:
+            - denom: rune
+              amount: "5000000000000"
+        - address: {{ addr_thor_cat }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_thor_fox }}
+          coins:
+            - denom: rune
+              amount: "2500000000000"
+        - address: {{ addr_module_reserve }}
+          coins:
+            - amount: "35000000000000"
+              denom: rune
+        - address: {{ addr_module_bond }}
+          coins:
+            - amount: "5000000000000"
+              denom: rune
+        - address: {{ addr_module_asgard }}
+          coins:
+            - amount: "100000000000"
+              denom: rune
+      params:
+        default_send_enabled: false
+    transfer:
+      params:
+        send_enabled: false
+    thorchain:
+      store_version: "132"
+      node_accounts:
+        - active_block_height: "0"
+          bond: "5000000000000"
+          ip_address: 1.1.1.1
+          node_address: {{ addr_thor_dog }}
+          bond_address: {{ addr_thor_dog }}
+          pub_key_set:
+            secp256k1: "tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4"
+            ed25519: "tthorpub1zcjduepqfan43w2emjhfv45gspf98squqlnl2rcchc3e4dx7z2nxr27edflsy2e8ql"
+          signer_membership: []
+          status: Active
+          # matches the priv_validator_key.json mounted in the test container
+          validator_cons_pub_key: tthorcpub1zcjduepqq75h7uy6qhesh9d3a9tuk0mzrnc46u8rye44ze6peua3zmpfh23q8z37sz
+          version: "1.132.0"
+      liquidity_providers:
+        - asset: BTC.BTC
+          asset_address: {{ addr_btc_cat }}
+          asset_deposit_value: "100000000"
+          last_add_height: "1"
+          pending_asset: "0"
+          pending_rune: "0"
+          rune_address: {{ addr_thor_cat }}
+          rune_deposit_value: "100000000000"
+          units: "100000000000"
+      pools:
+        - LP_units: "100000000000"
+          asset: BTC.BTC
+          balance_asset: "100000000"
+          balance_rune: "100000000000"
+          decimals: "8"
+          pending_inbound_asset: "0"
+          pending_inbound_rune: "0"
+          status: Available
+          synth_units: "0"
+      network_fees:
+        - chain: BTC
+          transaction_fee_rate: "7"
+          transaction_size: "1000"
+      vaults:
+        - block_height: "0"
+          chains:
+            - THOR
+            - BTC
+          coins:
+            - amount: "100000000"
+              asset: BTC.BTC
+              decimals: "8"
+          inbound_tx_count: "1"
+          membership:
+            - tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+          pub_key: tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+          status: ActiveVault
+          type: AsgardVault
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_providers
+asserts:
+  - .[0].rune_address == "tthor1uuds8pd92qnnq0udw0rpg0szpgcslc9p8lluej"
+---
+type: tx-version
+signer: {{ addr_thor_dog }}
+version: "1.133.0"
+---
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/liquidity_providers
+asserts:
+  - .[0].rune_address == "tthor1vmafl8f3s6uuzwnxkqz0eza47v6ecn0ttstnny"
+  - .[0] | has("asset_address") | not
+  - .|length == 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/tthor1vmafl8f3s6uuzwnxkqz0eza47v6ecn0ttstnny
+asserts:
+  - select(.balances[] | select(.denom == "rune").amount == "1")
+---
+type: check
+endpoint: http://localhost:1317/cosmos/auth/v1beta1/accounts/tthor1vmafl8f3s6uuzwnxkqz0eza47v6ecn0ttstnny
+asserts:
+  - .account["@type"] == "/cosmos.auth.v1beta1.ModuleAccount"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/balance/module/treasury
+asserts:
+  - .coins[0].denom == "rune"
+  - .coins[0].amount == "1"

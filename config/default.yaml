@@ -1,0 +1,363 @@
+########################################################################################
+# Bifrost
+########################################################################################
+# trunk-ignore-all(codespell/misspelled)
+bifrost:
+  # leveldb defaults to start, plus 10 bit per key filter
+  observer_leveldb: &default-leveldb
+    filter_bits_per_key: 10
+    compaction_table_size_multiplier: 1
+    write_buffer: 4194304
+    block_cache_capacity: 8388608
+    compact_on_init: true
+
+  metrics:
+    enabled: true
+    pprof_enabled: false
+    listen_port: 9000
+    read_timeout: 30s
+    write_timeout: 30s
+    chains:
+      - AVAX
+      - BCH
+      - BNB
+      - BTC
+      - DOGE
+      - ETH
+      - GAIA
+      - LTC
+      - BSC
+  thorchain:
+    chain_id: thorchain
+    chain_host: localhost:1317
+    chain_rpc: ""
+    chain_home_folder: ""
+    signer_name: ""
+  signer:
+    backup_keyshares: true
+    signer_db_path: /var/data/bifrost/signer_db
+    retry_interval: 2s
+    reschedule_buffer_blocks: 150 # 15 minutes
+    block_scanner:
+      chain_id: ThorChain
+      rpc_host: 127.0.0.1:26657
+      start_block_height: 0
+      block_retry_interval: 10s
+      block_height_discover_back_off: 5s
+      block_scan_processors: 1
+      start_block: "0"
+      http_request_timeout: 30s
+      http_request_read_timeout: 30s
+      http_request_write_timeout: 30s
+      max_http_request_retry: "10"
+    leveldb: *default-leveldb
+    auto_observe: true
+    keygen_timeout: 5m
+    keysign_timeout: 45s
+    party_timeout: 45s
+    pre_param_timeout: 5m
+  tss:
+    rendezvous: asgard
+    p2p_port: 5040
+    info_address: :6040
+    bootstrap_peers: ""
+    external_ip: ""
+    max_keyshare_recover_scan_blocks: 100
+  chains:
+    btc: &default-chain
+      disabled: false
+      chain_id: BTC
+      username: thorchain
+      password: password
+      http_post_mode: 1
+      disable_tls: 1
+      parallel_mempool_scan: 5
+      mempool_tx_id_cache_size: 1_000_000
+      scanner_leveldb:
+        <<: *default-leveldb
+        compaction_table_size_multiplier: 10
+        write_buffer: 20971520 # 20mb
+        block_cache_capacity: 536870912 # 512mb
+      min_confirmations: 0
+      max_rpc_retries: 9 # about 1 min
+      max_pending_nonces: 0
+      max_gas_tip_percentage: 0
+      token_max_gas_multiplier: 0
+      aggregator_max_gas_multiplier: 0
+      utxo: &utxo
+        block_cache_count: 144
+        transaction_batch_size: 500
+        max_mempool_batches: 10
+        estimated_average_tx_size: 1000
+        default_min_relay_fee_sats: 1000
+        default_sats_per_vbyte: 25
+        max_sats_per_vbyte: 9765 # backwards compatible with 1e8/10/1024
+        min_utxo_confirmations: 1
+        max_utxos_to_spend: 10
+        max_reorg_rescan_blocks: 72 # 12h
+      block_scanner: &default-block-scanner
+        chain_id: BTC
+        enforce_block_height: false
+        block_scan_processors: 1
+        block_height_discover_back_off: 5s
+        observation_flexibility_blocks: 3
+        block_retry_interval: 10s
+        http_request_timeout: 30s
+        http_request_read_timeout: 30s
+        http_request_write_timeout: 30s
+        max_http_request_retry: 10
+        db_path: /var/data/bifrost/observer
+        scan_mempool: true
+        max_contract_tx_logs: 0
+
+        # the following defaults must be defined to override with environment
+        rpc_host: ""
+        start_block_height: 0
+        cosmos_grpc_host: ""
+        cosmos_grpc_tls: false
+        gas_cache_blocks: 0
+        whitelist_tokens: []
+        concurrency: 0
+        max_gas_limit: 0
+        fixed_gas_rate: 0
+        gas_price_resolution: 10_000_000_000 # 10 gwei
+        max_resume_block_lag: 24h
+        max_healthy_lag: 30m
+        transaction_batch_size: 500
+
+      # the following defaults must be defined to override with environment
+      chain_host: ""
+      chain_network: ""
+      rpc_host: ""
+      cosmos_grpc_host: ""
+      cosmos_grpc_tls: false
+      opt_to_retire: false
+      solvency_blocks: 0
+
+    bnb:
+      <<: *default-chain
+      chain_id: BNB
+      block_scanner:
+        <<: *default-block-scanner
+        chain_id: BNB
+        block_height_discover_back_off: 0.3s
+        observation_flexibility_blocks: 2
+      mempool_tx_id_cache_size: 0
+      scanner_leveldb: *default-leveldb
+    eth:
+      <<: *default-chain
+      chain_id: ETH
+      max_pending_nonces: 3
+      max_gas_tip_percentage: 20
+      token_max_gas_multiplier: 3
+      aggregator_max_gas_multiplier: 10
+      block_scanner:
+        <<: *default-block-scanner
+        gas_cache_blocks: 40
+        concurrency: 1
+        chain_id: ETH
+        observation_flexibility_blocks: 20
+        max_gas_limit: 100000
+        max_contract_tx_logs: 50
+      mempool_tx_id_cache_size: 0
+      scanner_leveldb: *default-leveldb
+    avax:
+      <<: *default-chain
+      chain_id: AVAX
+      solvency_blocks: 100
+      max_pending_nonces: 3
+      token_max_gas_multiplier: 3
+      aggregator_max_gas_multiplier: 10
+      block_scanner:
+        <<: *default-block-scanner
+        concurrency: 1
+        chain_id: AVAX
+        gas_cache_blocks: 40
+        gas_price_resolution: 50_000_000_000 # 50 navax
+        observation_flexibility_blocks: 80
+        max_gas_limit: 100000
+        max_contract_tx_logs: 50
+        whitelist_tokens:
+          - 0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7 # USDT
+          - 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E # USDC
+          - 0xFE6B19286885a4F7F55AdAD09C3Cd1f906D2478F # WSOL
+          - 0x093783055F9047C2BfF99c4e414501F8A147bC69 # ALOT
+      mempool_tx_id_cache_size: 0
+      scanner_leveldb: *default-leveldb
+    bsc:
+      disabled: true
+      <<: *default-chain
+      chain_id: BSC
+      solvency_blocks: 100
+      max_pending_nonces: 3
+      token_max_gas_multiplier: 3
+      aggregator_max_gas_multiplier: 10
+      block_scanner:
+        <<: *default-block-scanner
+        concurrency: 1
+        chain_id: BSC
+        gas_cache_blocks: 40
+        gas_price_resolution: 10_000_000_000 # 10 gwei
+        observation_flexibility_blocks: 80
+        max_gas_limit: 100000
+        max_contract_tx_logs: 50
+        whitelist_tokens:
+          - 0x55d398326f99059fF775485246999027B3197955 # Binance Pegged USDT
+          - 0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d # Binance Pegged USDC
+          - 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56 # Binance Pegged BUSD
+          - 0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3 # Binance Pegged DAI
+          - 0x14016E85a25aeb13065688cAFB43044C2ef86784 # True USD
+          - 0x2170Ed0880ac9A755fd29B2688956BD959F933F8 # Binance Pegged ETH
+          - 0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c # Binance Pegged BTC
+          - 0x570A5D26f7765Ecb712C0924E4De545B89fD43dF # Binance Pegged SOL
+          - 0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47 # Binance Pegged Cardano
+          - 0x4B0F1812e5Df2A09796481Ff14017e6005508003 # Trust Wallet Token (TWT)
+          - 0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82 # PancakeSwap (CAKE)
+      mempool_tx_id_cache_size: 0
+      scanner_leveldb: *default-leveldb
+    doge:
+      <<: *default-chain
+      chain_id: DOGE
+      block_scanner:
+        <<: *default-block-scanner
+        chain_id: DOGE
+        gas_price_resolution: 500_000 # sats
+        gas_cache_blocks: 10
+        scan_mempool: false
+      mempool_tx_id_cache_size: 1_000_000
+      scanner_leveldb: *default-leveldb
+      min_confirmations: 2
+      utxo:
+        <<: *utxo
+        block_cache_count: 1440
+        default_sats_per_vbyte: 25
+        max_sats_per_vbyte: 976562 # backwards compatible with 1e8*10/1024
+        max_reorg_rescan_blocks: 720 # 12h
+    gaia:
+      <<: *default-chain
+      chain_id: GAIA
+      block_scanner:
+        <<: *default-block-scanner
+        chain_id: GAIA
+        gas_price_resolution: 100_000 # uatom
+        observation_flexibility_blocks: 40
+      mempool_tx_id_cache_size: 0
+      scanner_leveldb: *default-leveldb
+    ltc:
+      <<: *default-chain
+      chain_id: LTC
+      block_scanner:
+        <<: *default-block-scanner
+        chain_id: LTC
+        observation_flexibility_blocks: 3
+        gas_cache_blocks: 10
+      mempool_tx_id_cache_size: 1_000_000
+      scanner_leveldb: *default-leveldb
+      utxo:
+        <<: *utxo
+        block_cache_count: 600
+        max_sats_per_vbyte: 9765 # backwards compatible with 1e8/10/1024
+        estimated_average_tx_size: 250
+        max_reorg_rescan_blocks: 288 # 12h
+    bch:
+      <<: *default-chain
+      chain_id: BCH
+      block_scanner:
+        <<: *default-block-scanner
+        chain_id: BCH
+        observation_flexibility_blocks: 3
+      mempool_tx_id_cache_size: 1_000_000
+      scanner_leveldb: *default-leveldb
+      utxo:
+        <<: *utxo
+        block_cache_count: 144
+        max_sats_per_vbyte: 9765 # backwards compatible with 1e8/10/1024
+        estimated_average_tx_size: 1500
+        max_reorg_rescan_blocks: 72 # 12h
+
+########################################################################################
+# Thor
+########################################################################################
+
+thor:
+  node_relay_url: https://node-relay-bot.herokuapp.com
+  vault_pubkeys_cutoff_blocks: 1_000_000
+
+  log_filter:
+    modules:
+      - api-server
+      - consensus
+      - evidence
+      - mempool
+      - p2p
+      - pex
+      - rpc
+      - rpc-server
+      - txindex
+      - x/bank
+    messages:
+      - executed block
+      - commit synced
+
+  auto_state_sync:
+    enabled: false
+    block_buffer: 150_000
+    peers:
+      # NOTE: These are peers for auto state sync on mainnet only.
+      - c3613862c2608b3e861406ad02146f41cf5124e6@statesync-seed.ninerealms.com:27146
+      - dbd1730bff1e8a21aad93bc6083209904d483185@statesync-seed-2.ninerealms.com:27146
+  api:
+    limit_count: 180
+    limit_duration: 1m
+  cosmos:
+    pruning: nothing
+    halt_height: 0
+    min_retain_blocks: 0
+    telemetry:
+      enabled: false
+      prometheus_retention_time: 600
+    api:
+      enable: true
+      enabled_unsafe_cors: true
+      address: tcp://0.0.0.0:1317
+    grpc:
+      enable: false
+      address: 0.0.0.0:9090
+    state_sync:
+      snapshot_interval: 0
+      snapshot_keep_recent: 2
+  tendermint:
+    log:
+      level: info
+      format: plain
+    rpc:
+      listen_address: "" # set dynamically
+      cors_allowed_origin: "*"
+      experimental_subscription_buffer_size: 200
+      experimental_websocket_write_buffer_size: 200
+    p2p:
+      listen_address: "" # set dynamically
+      seeds: "" # set dynamically
+      external_address: ""
+      persistent_peers: ""
+      addr_book_strict: false
+      max_num_inbound_peers: 40
+      max_num_outbound_peers: 10
+      allow_duplicate_ip: true
+    consensus:
+      timeout_commit: 5s
+      # these can be set to 1ms temporarily to recover from consensus failure faster
+      timeout_propose_delta: 500ms
+      timeout_prevote_delta: 500ms
+      timeout_precommit_delta: 500ms
+    state_sync:
+      enable: false
+      # The thorchain.info RPC is unreliable, so Nine Realms will be the trusted source
+      # until someone from the community hosts another. This must be an archive node for
+      # historical height verification.
+      rpc_servers: https://rpc-v1.ninerealms.com:443,https://rpc-v1.ninerealms.com:443
+      trust_height: 0
+      trust_hash: ""
+      trust_period: 360h0m0s
+    instrumentation:
+      prometheus: true

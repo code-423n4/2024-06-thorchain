@@ -1,0 +1,105 @@
+type: env
+key: SIGNING_TRANSACTION_PERIOD
+value: "3"
+---
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/constants
+asserts:
+  - .int_64_values.SigningTransactionPeriod == 3
+---
+########################################################################################
+# swap to btc
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "10000000000"
+    asset: "rune"
+memo: "=:BTC.BTC:{{ addr_btc_fox }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid 1 }}"
+  - .[0]|.height == 2
+---
+########################################################################################
+# outbound should reschedule after signing period
+########################################################################################
+type: create-blocks
+count: 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid 1 }}"
+  - .[0]|.height == 5
+---
+########################################################################################
+# outbound should reschedule to coalesce blocks in the future after signing period
+########################################################################################
+type: tx-mimir
+key: RescheduleCoalesceBlocks
+value: 5
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .RESCHEDULECOALESCEBLOCKS == 5
+---
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid 1 }}"
+  - .[0]|.height == 10
+---
+########################################################################################
+# outbound should not reschedule until signing period after latest reschedule
+########################################################################################
+type: create-blocks
+count: 3
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid 1 }}"
+  - .[0]|.height == 10
+---
+########################################################################################
+# outbound should reschedule signing period after latest reschedule
+########################################################################################
+type: create-blocks
+count: 2
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ native_txid 1 }}"
+  - .[0]|.height == 15

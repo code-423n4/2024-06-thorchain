@@ -1,0 +1,81 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 2
+---
+########################################################################################
+# swap to swap out aggregator contract
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_fox }}
+coins:
+  - amount: "10000000000"
+    asset: "rune"
+memo: "=:e:{{ addr_eth_fox }}::::6f3848:19e4348"
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# check explicit match on queue/keysign as types have bit us multiple times
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - |
+    .[0] == {
+      chain: "ETH",
+      clout_spent: "0",
+      coin: {
+          amount: "81364267",
+          asset: "ETH.ETH"
+      },
+      gas_rate: 12,
+      height: 2,
+      in_hash: "34AA325C82F0B9572B54B1AD403146200625DB5F31EF59C5F8BF9BF22F93E71A",
+      max_gas: [
+          {
+              amount: "960000",
+              asset: "ETH.ETH",
+              decimals: 8
+          }
+      ],
+      memo: "OUT:34AA325C82F0B9572B54B1AD403146200625DB5F31EF59C5F8BF9BF22F93E71A",
+      to_address: "0xe3c64974c78f5693bd2bc68b3221d58df5c6e877",
+      vault_pub_key: "tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4"
+    }
+---
+type: check
+endpoint: http://localhost:1317/thorchain/keysign/2/tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4
+asserts:
+  - |
+    .keysign.tx_array[0] == {
+      chain: "ETH",
+      to_address: "0xe3c64974c78f5693bd2bc68b3221d58df5c6e877",
+      vault_pub_key: "tthorpub1addwnpepqfshsq2y6ejy2ysxmq4gj8n8mzuzyulk9wh4n946jv5w2vpwdn2yuyp6sp4",
+      coin: {
+        "asset": "ETH.ETH",
+        "amount": "81364267"
+      },
+      memo: "OUT:34AA325C82F0B9572B54B1AD403146200625DB5F31EF59C5F8BF9BF22F93E71A",
+      max_gas: [
+        {
+          asset: "ETH.ETH",
+          amount: "960000",
+          decimals: 8
+        }
+      ],
+      gas_rate: 12,
+      in_hash: "34AA325C82F0B9572B54B1AD403146200625DB5F31EF59C5F8BF9BF22F93E71A",
+      aggregator: "0x69800327b38A4CeF30367Dec3f64c2f2386f3848",
+      aggregator_target_asset: "0x6f67873ebc41ed88B08A9265Bd16480f819e4348",
+      clout_spent: "0"
+    }
+  - .signature == "R8q5YSzO0K2u7pnGaNLnZgU7aTQyx78G+V/SJGRGEEpSmaxcmX9gaGpWdTR8nk52jVRUWCPd0Wv1CkK66KeNfA=="

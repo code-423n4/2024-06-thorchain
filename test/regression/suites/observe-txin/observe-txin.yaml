@@ -1,0 +1,73 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+- tx:
+    id: '{{ observe_txid 1 }}'
+    chain: BTC
+    from_address: {{ addr_btc_cat }}
+    to_address: {{ addr_btc_dog }}
+    coins:
+      - amount: "100000000"
+        asset: "BTC.BTC"
+        decimals: 8
+    gas:
+      - amount: "10000"
+        asset: "BTC.BTC"
+    memo: "+:BTC.BTC"
+  block_height: 1
+  finalise_height: 1
+  observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_dog }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/tx/{{ observe_txid 1 }}
+asserts:
+- .observed_tx.status == "done"
+---
+type: tx-observed-in
+signer: {{ addr_thor_fox }}
+txs:
+- tx:
+    id: '{{ observe_txid 2 }}'
+    chain: BTC
+    from_address: {{ addr_btc_cat }}
+    to_address: {{ addr_btc_dog }}
+    coins:
+      - amount: "100000000"
+        asset: "BTC.BTC"
+        decimals: 8
+    gas:
+      - amount: "10000"
+        asset: "BTC.BTC"
+    memo: "+:BTC.BTC:{{ addr_thor_cat }}"
+  block_height: 2
+  finalise_height: 2
+  observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/tx/{{ observe_txid 2 }}
+status: 404
+asserts:
+- .error|length > 0

@@ -1,0 +1,121 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-eth-3usd-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# swap to token
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_cat }}
+coins:
+  - amount: "15000000000"
+    asset: "rune"
+memo: "=:${ASSET=ETH.USDX-0X9999999999999999999999999999999999999999}:{{ addr_eth_cat }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+---
+########################################################################################
+# observe outbound using more than max gas, but under MaxETHGas is ok
+########################################################################################
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_cat }}
+      coins:
+        - amount: "11243458200"
+          asset: "${ASSET}"
+          decimals: 8
+      gas:
+        - amount: "49999999"
+          asset: "ETH.ETH"
+      memo: "OUT:{{ native_txid 1 }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .HALTETHCHAIN|not
+---
+########################################################################################
+# swap to token
+########################################################################################
+type: tx-deposit
+signer: {{ addr_thor_cat }}
+coins:
+  - amount: "15000000000"
+    asset: "rune"
+memo: "=:${ASSET}:{{ addr_eth_cat }}"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+---
+########################################################################################
+# observe outbound using more than MaxETHGas should slash and leave in queue
+########################################################################################
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: ETH
+      from_address: {{ addr_eth_dog }}
+      to_address: {{ addr_eth_cat }}
+      coins:
+        - amount: "8990871000"
+          asset: "${ASSET}"
+          decimals: 8
+      gas:
+        - amount: "50000001" # should trigger slash over max
+          asset: "ETH.ETH"
+      memo: "OUT:{{ native_txid 2 }}"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1 # outbound remains in queue
+---
+type: check
+endpoint: http://localhost:1317/thorchain/block
+asserts:
+  - '[.txs[]|.result.events[]|select(.type=="bond")]|length == 2' # 2 bond slash events
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .HALTETHCHAIN # chain halted
+---
+type: fail-export-invariants

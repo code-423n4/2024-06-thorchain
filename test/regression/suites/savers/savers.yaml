@@ -1,0 +1,630 @@
+{{ template "default-state.yaml" }}
+---
+{{ template "btc-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pools
+asserts:
+  - .|length == 1
+---
+########################################################################################
+# deposit btc
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/deposit
+params:
+  asset: BTC.BTC
+  amount: 5000000
+asserts:
+  - .expected_amount_deposit|tonumber == 4759341
+  - .memo == "+:BTC/BTC"
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .recommended_min_amount_in == "10000"
+  - .fees.liquidity == "329539"
+  - .fees.outbound == "2100"
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+  - .fees.slippage_bps == 647
+  - .fees.total_bps == 651
+  - .recommended_gas_rate == "10"
+  - .gas_rate_units == "satsperbyte"
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 1 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "5000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC"
+    block_height: 1
+    finalise_height: 1
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 4759341
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/supply
+asserts:
+  - .supply|length == 3
+  - .supply[]|select(.denom == "btc/btc")|.amount|tonumber == 4763021
+---
+########################################################################################
+# swap btc to rune and back to generate yield
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 2 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 2
+    finalise_height: 2
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2514340649215
+---
+########################################################################################
+# check growth and withdraw 50%
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/withdraw
+params:
+  asset: BTC.BTC
+  address: {{ addr_btc_pig }}
+  withdraw_bps: 5000
+asserts:
+  - .expected_amount_out|tonumber == 2803914
+  - .memo == "-:BTC/BTC:5000"
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .fees.liquidity == "19842"
+  - .fees.outbound == "14000"
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+  - .fees.slippage_bps == 69
+  - .fees.total_bps == 118
+  - .recommended_gas_rate == "10"
+  - .gas_rate_units == "satsperbyte"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 4759341
+  - .[0].asset_redeem_value|tonumber == 5688981
+  - .[0].growth_pct|tonumber == 0.195329563483683981
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 3 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "10000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "-:BTC/BTC:5000"
+    block_height: 3
+    finalise_height: 3
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ observe_txid 3 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 4 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "2803914"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "OUT:{{ observe_txid 3 }}"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+########################################################################################
+# check growth and withdraw remaining
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/quote/saver/withdraw
+params:
+  asset: BTC.BTC
+  address: {{ addr_btc_pig }}
+  withdraw_bps: 10000
+asserts:
+  - .expected_amount_out|tonumber == 2803832
+  - .memo == "-:BTC/BTC:10000"
+  - .inbound_address == "{{ addr_btc_dog }}"
+  - .fees.liquidity == "19934"
+  - .fees.outbound == "14000"
+  - (.fees.total|tonumber) == (.fees.liquidity|tonumber)+(.fees.outbound|tonumber)
+  - .fees.slippage_bps == 70
+  - .fees.total_bps == 118
+  - .recommended_gas_rate == "10"
+  - .gas_rate_units == "satsperbyte"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 2379671
+  - .[0].asset_redeem_value|tonumber == 2844532
+  - .[0].growth_pct|tonumber == 0.195346751714837891
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 5 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "2800512"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "-:BTC/BTC:10000"
+    block_height: 5
+    finalise_height: 5
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ observe_txid 5 }}"
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 6 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "2803955"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "OUT:{{ observe_txid 5 }}"
+    block_height: 4
+    finalise_height: 4
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+########################################################################################
+# turn on streaming swaps for savers adds (set interval to 1)
+########################################################################################
+type: tx-mimir
+key: SaversStreamingSwapsInterval
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .SAVERSSTREAMINGSWAPSINTERVAL == 1
+---
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 7 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "20000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC"
+    block_height: 5
+    finalise_height: 5
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 7 }}
+asserts:
+  - .deposit == "20000000"
+  - .count == 1
+  - .tx_id == "{{ observe_txid 7 }}"
+  - .interval == 1
+  - .quantity == 6
+  - .in == "3333333"
+---
+type: create-blocks
+count: 2
+---
+########################################################################################
+# streaming swap should be 2/3 done
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 7 }}
+asserts:
+  - .deposit == "20000000"
+  - .count == 3
+  - .tx_id == "{{ observe_txid 7 }}"
+  - .interval == 1
+  - .quantity == 6
+  - .in == "9999999"
+  - .out == "9945174"
+---
+type: create-blocks
+count: 3
+---
+########################################################################################
+# streaming swap should be done + savers position added
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 19891238
+  - .[0].asset_redeem_value|tonumber == 19891503
+---
+########################################################################################
+# swap btc to rune and back to generate yield
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 8 }}"
+      chain: BTC
+      from_address: {{ addr_btc_fox }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "500000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "=:THOR.RUNE:{{ addr_thor_fox }}"
+    block_height: 24
+    finalise_height: 24
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 19891238
+  - .[0].asset_redeem_value|tonumber == 21162997
+  - .[0].growth_pct|tonumber == 0.063935638395156702
+---
+########################################################################################
+# withdraw savers should use streaming swaps
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 9 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "20000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "-:BTC/BTC:10000"
+    block_height: 25
+    finalise_height: 25
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 9 }}
+asserts:
+  - .deposit == "21162997"
+  - .count == 1
+  - .tx_id == "{{ observe_txid 9 }}"
+  - .interval == 1
+  - .quantity == 3
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# streaming swap should be (2/3) done
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 9 }}
+asserts:
+  - .deposit == "21162997"
+  - .count == 2
+  - .tx_id == "{{ observe_txid 9 }}"
+  - .interval == 1
+  - .quantity == 3
+  - .in == "14108664"
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# streaming swap should be done + outbound scheduled + savers position removed
+########################################################################################
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 1
+  - .[0]|.in_hash == "{{ observe_txid 9 }}"
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 0
+---
+type: tx-observed-out
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 9 }}"
+      chain: BTC
+      from_address: {{ addr_btc_dog }}
+      to_address: {{ addr_btc_pig }}
+      coins:
+        - amount: "20883572"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10500"
+          asset: "BTC.BTC"
+      memo: "OUT:{{ observe_txid 9 }}"
+    block_height: 29
+    finalise_height: 29
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/queue/outbound
+asserts:
+  - .|length == 0
+---
+########################################################################################
+# unhappy path: swaps paused half way through deposit streaming swaps
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 10 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "20000000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC"
+    block_height: 31
+    finalise_height: 31
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 10 }}
+asserts:
+  - .deposit == "20000000"
+  - .count == 1
+  - .tx_id == "{{ observe_txid 10 }}"
+  - .interval == 1
+  - .quantity == 3
+  - .in == "6666666"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 10 }}
+asserts:
+  - .deposit == "20000000"
+  - .count == 2
+  - .tx_id == "{{ observe_txid 10 }}"
+  - .interval == 1
+  - .quantity == 3
+  - .in == "13333332"
+  - .out == "13253226"
+---
+########################################################################################
+# pause swaps - streaming should pause
+########################################################################################
+type: tx-mimir
+key: HaltTrading
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .HALTTRADING == 1
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swap/streaming/{{ observe_txid 10 }}
+asserts:
+  - .deposit == "20000000"
+  - .count == 2
+  - .tx_id == "{{ observe_txid 10 }}"
+  - .interval == 1
+  - .quantity == 3
+  - .in == "13333332"
+  - .out == "13253226"
+---
+type: tx-mimir
+key: HaltTrading
+value: 0
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .HALTTRADING == 0
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 0
+---
+type: check
+endpoint: http://localhost:1317/thorchain/pool/BTC.BTC/savers
+asserts:
+  - .|length == 1
+  - .[0].asset_deposit_value|tonumber == 19880199
+  - .[0].asset_redeem_value|tonumber == 19880622
+  - .[0].last_add_height == 24
+---
+########################################################################################
+# small savers add: shouldn't create streaming swap even when enabled
+########################################################################################
+type: tx-observed-in
+signer: {{ addr_thor_dog }}
+txs:
+  - tx:
+      id: "{{ observe_txid 10 }}"
+      chain: BTC
+      from_address: {{ addr_btc_pig }}
+      to_address: {{ addr_btc_dog }}
+      coins:
+        - amount: "200000"
+          asset: "BTC.BTC"
+          decimals: 8
+      gas:
+        - amount: "10000"
+          asset: "BTC.BTC"
+      memo: "+:BTC/BTC"
+    block_height: 31
+    finalise_height: 31
+    observed_pub_key: {{ pubkey_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/swaps/streaming
+asserts:
+  - .|length == 0

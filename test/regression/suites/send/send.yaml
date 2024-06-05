@@ -1,0 +1,114 @@
+{{ template "default-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2500000000000
+---
+type: tx-send
+from_address: {{ addr_thor_fox }}
+to_address: {{ addr_thor_wolf }}
+amount:
+  - denom: rune
+    amount: "2500000000000"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence == "1"
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2499998000000
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_wolf }}
+asserts:
+  - .balances|length == 0
+---
+type: tx-send
+from_address: {{ addr_thor_fox }}
+to_address: {{ addr_thor_wolf }}
+amount:
+  - denom: rune
+    amount: "2499996000000"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence == "2"
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_fox }}
+asserts:
+  - .balances|length == 0
+---
+type: check
+endpoint: http://localhost:1317/cosmos/bank/v1beta1/balances/{{ addr_thor_wolf }}
+asserts:
+  - .balances|length == 1
+  - .balances[]|select(.denom == "rune")|.amount|tonumber == 2499996000000
+---
+type: check
+endpoint: http://localhost:1317/txs?tx.height=3
+asserts:
+  - .txs|length == 1
+  - .txs[0]|.logs|length == 1
+  - .txs[0]|.logs[0]|.events|length == 4
+  - .txs[0]|.logs[0]|.events[2].type == "message"
+  - .txs[0]|.logs[0]|.events[2].attributes|length == 2
+  - .txs[0]|.logs[0]|.events[2].attributes[0]|.key == "action"
+  - .txs[0]|.logs[0]|.events[2].attributes[0]|.value == "send"
+  - .txs[0]|.logs[0]|.events[2].attributes[1]|.key == "sender"
+  - .txs[0]|.logs[0]|.events[2].attributes[1]|.value == "{{ addr_thor_fox }}"
+---
+type: tx-send
+from_address: {{ addr_thor_fox }}
+to_address: {{ addr_thor_wolf }}
+amount:
+  - denom: rune
+    amount: "1"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/auth/accounts/{{ addr_thor_fox }}
+asserts:
+  - .result.value.sequence == "2"
+---
+########################################################################################
+# attempt send to lending module
+########################################################################################
+---
+type: check
+endpoint: http://localhost:1317/thorchain/balance/module/lending
+asserts:
+  - .|[.coins[]|select(.denom == "rune")]|length == 0
+---
+type: tx-send
+from_address: {{ addr_thor_wolf }}
+to_address: {{ addr_module_lending }}
+amount:
+  - denom: rune
+    amount: "1"
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/balance/module/lending
+asserts:
+  - .|[.coins[]|select(.denom == "rune")]|length == 0

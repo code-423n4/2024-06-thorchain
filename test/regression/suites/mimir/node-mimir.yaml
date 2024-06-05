@@ -1,0 +1,62 @@
+{{ template "5-validators-btc-eth-pool-state.yaml" }}
+---
+type: create-blocks
+count: 1
+---
+########################################################################################
+# set admin mimir value
+########################################################################################
+type: tx-mimir
+key: RegressionTest
+value: 1
+signer: {{ addr_thor_dog }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .REGRESSIONTEST == 1
+---
+########################################################################################
+# 1/3 of nodes cannot override admin
+########################################################################################
+type: tx-mimir
+key: RegressionTest
+value: 2
+signer: {{ addr_thor_cat }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .REGRESSIONTEST == 1
+---
+########################################################################################
+# 2/3 nodes should override admin
+########################################################################################
+type: tx-mimir
+key: RegressionTest
+value: 2
+signer: {{ addr_thor_fox }}
+---
+type: tx-mimir
+key: RegressionTest
+value: 2
+signer: {{ addr_thor_frog }}
+---
+type: tx-mimir
+key: RegressionTest
+value: 2
+signer: {{ addr_thor_goat }}
+---
+type: create-blocks
+count: 1
+---
+type: check
+endpoint: http://localhost:1317/thorchain/mimir
+asserts:
+  - .REGRESSIONTEST == 2
