@@ -161,11 +161,11 @@ git clone https://github.com/code-423n4/2024-06-thorchain.git
 git submodule update --init --recursive
 cd ethereum
 npx hardhat clean
-npx hardhat compiles
+npx hardhat compile
 npx hardhat test
 cd avalanche
 npx hardhat clean
-npx hardhat compiles
+npx hardhat compile
 npx hardhat test
 ```
 To run code coverage
