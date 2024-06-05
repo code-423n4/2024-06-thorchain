@@ -402,6 +402,29 @@ contract THORChain_Router {
     }
   }
   
+  //############################## VAULT MANAGEMENT ##############################
+
+  // A vault can call to "return" all assets to an asgard, including ETH.
+  function returnVaultAssets(
+    address router,
+    address payable asgard,
+    Coin[] memory coins,
+    string memory memo
+  ) external payable nonReentrant {
+    if (router == address(this)) {
+      for (uint i = 0; i < coins.length; i++) {
+        _adjustAllowances(asgard, coins[i].asset, coins[i].amount);
+      }
+      emit VaultTransfer(msg.sender, asgard, coins, memo); // Does not include ETH.
+    } else {
+      for (uint i = 0; i < coins.length; i++) {
+        _routerDeposit(router, asgard, coins[i].asset, coins[i].amount, memo);
+      }
+    }
+    bool success = asgard.send(msg.value);
+    require(success);
+  }
+
   //############################## HELPERS ##############################
 
   function vaultAllowance(
