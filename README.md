@@ -3,7 +3,7 @@
   - HM awards: $28,800 in USDC
   - QA awards: $1,200 in USDC
   - Judge awards: $3,000 in USDC
-  - Lookout awards: $3,000 in USDC
+  - Validator awards: $3,000 in USDC
   - Scout awards: $500 in USDC
 - Join [C4 Discord](https://discord.gg/code4rena) to register
 - Submit findings [using the C4 form](https://code4rena.com/contests/2024-06-thorchain/submit)
