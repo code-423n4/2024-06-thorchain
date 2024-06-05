@@ -27,7 +27,82 @@ If an un-whitelisted token interacts with the Router (for example through the de
 
 # Overview
 
-[ ⭐️ SPONSORS: add info here ]
+## THORChain Overview
+
+THORChain is a decentralized, cross-chain liquidity network that replicates the functionality of centralized exchanges on-chain. Its features include native asset swapping, time-weighted average price (TWAP) trades, savings, and lending. The network is maintained by over 100 anonymous and independent validators, each operating a sophisticated stack to secure Layer 1 assets, monitor and sign transactions on external blockchains, and execute business logic on THORChain’s proprietary Cosmos SDK-based blockchain.
+
+## THORChain Architecture Overview
+
+THORChain’s Architecture consists of 4 major components. The two components relevant for this contest are the Router Smart Contract and the Bifrost observation & signing interface.
+
+**Router Smart Contract (EVM Only) (In scope)**
+https://gitlab.com/thorchain/thornode/-/tree/develop/chain/ethereum
+
+The THORChain router serves as both the entry and exit point for EVM-based gas assets and ERC20 tokens. Users deposit assets using the router's depositWithExpiry function, providing the necessary parameters. THORChain's validators monitor the emitted events from this function to determine the appropriate actions, such as swaps, savings, or loan initiation. For EVM outbound transactions, THORChain’s validators sign and broadcast a transferOut or transferOutAndCall function call on the router. The Router contract holds the network’s ERC20 tokens and manages allowances for each active vault, while gas assets are forwarded to and from the contract and the active vaults.
+
+**Bifrost Observation and Signing Interface (Partially in scope)**
+https://gitlab.com/thorchain/thornode/-/tree/develop/bifrost
+
+Bifrost is the observation and signing interface between THORChain and each external blockchain. For each connected blockchain, Bifrost scans each block and monitors for inbound transactions to the network. When a valid inbound transaction is observed, Bifrost posts an observation transaction to THORChain’s Layer 1. Bifrost also handles signing outbound transactions to external blockchains. Once an outbound transaction is assigned to a vault, the Bifrost daemons for each vault invoke THORChain’s TSS library to sign the outbound with its keyshare. After the threshold signature is complete, Bifrost broadcasts the transaction to the external chain.
+
+**TSS Library (Not in scope)**
+https://gitlab.com/thorchain/tss/tss-lib
+https://gitlab.com/thorchain/tss/go-tss
+
+THORChain’s Threshold Signature Scheme (TSS) library is a fork of Binance’s Go-based TSS implementation of the G20 TSS algorithm. The TSS library performs KeyGen and KeySign ceremonies to create, sign outbounds for, and rotate THORChain’s Asgard vaults, which protect the network's external Layer 1 assets.
+
+**THORNode - Cosmos SDK Layer 1 (Not in scope)**
+
+THORChain’s Layer 1 is a Cosmos chain that executes all business logic for the network, including feature functionality, validator management, vault rotation, rewards distribution, and more.
+
+## Router Specification
+Public functions
+
+**depositWithExpiry** - all EVM-based actions on THORChain are initiated through this function. 
+Params:
+- Vault (address): The THORChain vault to deposit the asset to
+- Asset (address): The asset being deposited (null address for ETH)
+- Amount (uint256): Amount of asset being deposited in asset’s decimals. Not required for ETH, transaction value used instead.
+- Memo (string): The THORChain memo indicating transaction intent. More information about memos here. 
+- Expiration (uint256): The expiration of this deposit in seconds. Transactions confirmed after this expiry should be reverted. 
+Events:
+- DepositEvent: if emitted, Bifrost will observe and post a MsgObservedTxIn transaction to THORChain to initiate the action. 
+
+**transferOut** - intended to only be called by a THORChain vault. transferOut sends gas assets or ERC20s to fulfill an EVM outbound. 
+Params:
+- To (address): User’s destination address for the outbound
+- Asset (address): The asset being transferred out
+- Amount (uint256): The amount being transferred out
+- Memo (string): Outbound transaction memo. Format (OUT:<in-hash> where in-hash is the tx hash of the inbound that triggered this outbound)
+Events:
+- TransferOut: if emitted, Bifrost will observe and post a MsgObservedTxOut to THORChain to alert the network of an outbound from a vault. 
+
+**transferOutAndCall** - intended to only be called by a THORChain vault. transferOutAndCall calls a whitelisted “aggregator” contract’s `swapOut` function that in turn initiates a transaction on a 3rd party protocol. This is used to daisy chain swaps with external liquidity, enabling swaps such as $DOGE -> $SHIB (DOGE → ETH on THORChain, and ETH → SHIB on Uniswap). 
+Params:
+- aggregator (address) - The address of the whitelisted aggregator
+- finalToken (address) - The final token of the aggregator call (e.g. SHIB)
+- to (address) - User’s destination address
+- amountOutMin (uint256) - Limit for the final swap 
+- memo (string) - THORChain’s outbound memo 
+Events:
+- TransferOutAndCall - if emitted, Bifrost will observe and post a MsgObservedTxOut to THORChain to alert the network of an outbound from a vault.
+
+**transferAllowance** - intended to only be called by a THORChain vault. transferAllowance is used during “churns” (i.e. vault rotation). Retiring vaults transfer their allowance to spend ERC20 tokens on the router to the new vaults. 
+Params:
+- router (address) - The address of the router where ERC20s are stored
+- newVault (address) - The address of the new vault
+- asset (address) - The asset whose allowance is being transferred
+- amount (uint256) - Amount of allowance being transferred
+- memo (string) - THORChain’s migrate memo (MIGRATE:<thorchain-block-height>)
+Events:
+- TransferAllowance - if emitted, Bifrost will observe abd post a MsgMigrate transaction to THORChain to alert the network of a vault migration transaction. 
+
+## Bifrost Specification
+The most important part of Bifrost for this audit contest is the smartcontract_log_parser, and specifically the GetTxInItem function. The GetTxInItem is run for each obvserve transaction on EVM chains. The function iterates through each log emitted by the transaction, and determines if any valid logs were emitted by the THORChain router. If it determines that a log was emitted by the THORChain router, it parses that log and forwards the appropriate details to the THORChain Layer 1 for processing. This is an incredibly sensitive and crucial piece of the codebase, as if it can be tricked, this means malicious contracts can trick Bifrost into informing THORChain of something that didn’t actually happen, leading to loss of funds. In fact, in July of 2021, THORChain’s old router + Bifrost were hacked in this exact way. Details of those hacks:
+
+https://rekt.news/thorchain-rekt/ 
+https://rekt.news/thorchain-rekt2/
+
 
 ## Links
 
