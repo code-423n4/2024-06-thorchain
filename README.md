@@ -147,7 +147,7 @@ After the July 2021 hacks, THORChain implemented a whitelist for smart contracts
 ### Files in scope
 
 
-This contest is focused on **THORChain Removal of Whitelisting on Router**
+This contest is focused on **THORChain Removal of Whitelisting on Router and Router V5**
 
 - Only whitelisted contracts can call into and receive calls from TC Router.
 [See here](https://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/whitelist_smartcontract.go?ref_type=headshttps://gitlab.com/thorchain/thornode/-/blob/develop/bifrost/pkg/chainclients/ethereum/whitelist_smartcontract_aggregators.go?ref_type=heads)
@@ -168,6 +168,7 @@ This contest is focused on **THORChain Removal of Whitelisting on Router**
 
 ### Files out of scope  
 All files not listed above are Out Of Scope.
+This function of Router V5 is out of scope: `returnVaultAssets`
 
 ## Scoping Q &amp; A
 
