@@ -13,10 +13,6 @@
 
 ## Automated Findings / Publicly Known Issues
 
-The 4naly3er report can be found [here](https://github.com/code-423n4/2024-06-thorchain/blob/main/4naly3er-report.md).
-
-
-
 _Note for C4 wardens: Anything included in this `Automated Findings / Publicly Known Issues` section is considered a publicly known issue and is ineligible for awards._
 - Technically any ERC20 can interact with the THORChain Router, but there is a whitelist implemented in Bifrost that limits which tokens a tx will be processed for. The whitelist is defined [here](https://gitlab.com/thorchain/thornode/-/blob/develop/common/tokenlist/ethtokens/eth_mainnet_latest.json?ref_type=heads)
 
