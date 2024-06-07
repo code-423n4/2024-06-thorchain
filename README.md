@@ -269,8 +269,8 @@ To run code coverage
 ```bash
 npx hardhat coverage
 ```
-![Screenshot from 2024-06-05 20-38-56](https://github.com/code-423n4/2024-06-thorchain/blob/main/screenshot_1.png?raw=true)
-![Screenshot from 2024-06-05 20-28-34](https://github.com/code-423n4/2024-06-thorchain/blob/main/screenshot_2.png?raw=true)
+![thorchain1](https://github.com/code-423n4/2024-06-thorchain/blob/main/thorchain1.png?raw=true)
+![thorchain2](https://github.com/code-423n4/2024-06-thorchain/blob/main/thorchain2.png?raw=true)
 
 
 ## Miscellaneous
