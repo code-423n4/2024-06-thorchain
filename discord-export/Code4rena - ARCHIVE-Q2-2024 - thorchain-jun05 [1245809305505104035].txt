@@ -1,0 +1,973 @@
+==============================================================
+Guild: Code4rena
+Channel: ARCHIVE-Q2-2024 / thorchain-jun05
+==============================================================
+
+[06/04/2024 00:02] knownfactc4_29311 (pinned)
+👋 Hello and welcome to the audit channel for the $36,500 in USDC **Thorchain** audit!
+
+📆 Audit opens 06/05/2024 20:00 (20:00 UTC) and runs through 06/12/2024 20:00 (20:00 UTC) (7 days).
+
+Please give a warm welcome to the Thorchain team, particularly @Eridanus (9R), who will be available for questions either here in the channel or via a PRIVATE thread in the EST and PST timezones . 
+
+🤖 **Documentation bot assistance:** For general questions about the codebase, give our documentation bot a try, by tagging `@Docs Wolf` in any thread (private or public) and asking your question. The bot will make its best attempt to answer based on the codebase and documentation, and link you to relevant resources. 
+
+We'll be posting relevant links, documentation, etc. here, so if you intend to participate in this audit, consider enabling notifications for this channel. 🐺 ⏰
+
+Audit Page: https://code4rena.com/audits/2024-06-thorchain
+
+{Reactions}
+👋 (8) chefskiss (2) 
+
+[06/05/2024 16:38] knownfactc4_29311
+Pinned a message.
+
+
+[06/05/2024 20:04] thebrittfactor
+Pinned a message.
+
+
+[06/05/2024 21:47] dvrkzy999
+Good luck to everyone
+
+{Reactions}
+code4rena 
+
+[06/06/2024 03:21] mt030d
+https://github.com/code-423n4/2024-06-thorchain/blob/main/4naly3er-report.md
+
+It seems the link for the automated findings is broken.
+
+{Reactions}
+✅ 
+
+[06/06/2024 03:43] xterminate69
+Welcome @Eridanus (9R)
+
+
+[06/06/2024 04:54] xterminate69
+It is not broken it usually takes around 30 hours for the automated findings to be organised in to dups and false.
+
+
+[06/06/2024 04:54] xterminate69
+look again the next day
+
+
+[06/06/2024 05:00] mt030d
+Got it, thanks
+
+
+[06/06/2024 06:30] uaarrr
+how can the go code can be executed & tested exactly ?
+
+
+[06/06/2024 12:12] samuraii77
+since the audit is focused on the fact that the whitelist of tokens is being removed, we can assume that there is essentially no whitelist and any token is allowed?
+
+
+[06/06/2024 13:24] iam_emptyset
+The whitelist that is being removed is not the allowed tokens it's for the contracts that can interact with the router. Not sure though
+
+{Reactions}
+👍 (2) 
+
+[06/06/2024 13:59] olegpetrov
+you are right. cc @samuraii77 
+
+Before, only transactions originating from whitelisted contracts would be observed, others could succeed on the evm blockchain, but be ignored by Thorchain.
+
+Having a list of whitelisted smart contracts is making the protocol less composable and is hindering Thorchain's growth. We want any contracts be it aggregators, other protocols or more simply smart contract wallets to be able to interact with the Thorchain Router.
+
+
+[06/06/2024 14:01] olegpetrov
+Will defer to Eridanus for this.
+
+I tested "evil contracts" in the solidity test suite directly, so that's an angle too.
+
+
+[06/06/2024 14:03] samuraii77
+hey, I created a private thread with you, can you check?
+
+{Reactions}
+👍 
+
+[06/06/2024 14:24] eridanus9r
+let me create some a guide for this - you will basically need to run a thorchain mocknet locally
+
+{Reactions}
+thankyou 
+
+[06/06/2024 14:25] eridanus9r (pinned)
+Message to Wardens: The README was missing a link to more info about THORChain transaction memos. You can find that here: https://dev.thorchain.org/concepts/memos.html
+
+{Embed}
+https://dev.thorchain.org/concepts/memos.html
+Transaction Memos - THORChain Dev Docs
+Developer Documentation for THORChain. Integrate with THORChain; Swap, Save and Lend.
+
+
+[06/06/2024 14:29] kartoonjoy
+Pinned a message.
+
+
+[06/06/2024 14:41] kartoonjoy
+Wardens, this audit will not include an analyzer report. Thanks!
+
+
+[06/06/2024 14:41] eridanus9r (pinned)
+Also, for the whitelist removal feature, this is the PR: https://gitlab.com/thorchain/thornode/-/merge_requests/3448 - so you can see the diffs
+
+{Embed}
+https://gitlab.com/thorchain/thornode/-/merge_requests/3448
+[bifrost] Remove dex whitelist requirement for deposits (!3448) · M...
+Closes #1860
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/RUNE-ICON-FLASH_512-F132C.png
+
+{Reactions}
+👍 
+
+[06/06/2024 14:42] kartoonjoy
+Pinned a message.
+
+{Reactions}
+🙏 
+
+[06/07/2024 04:03] tamayonft
+where the router will be deployed?
+
+
+[06/07/2024 05:00] samuselderg
+Wait for confirmation by the team, but pretty sure the evm router is *currently* relevant scope to:
+- Ethereum (mainnet)
+- BSC (BNB Smartchain)
+- Avalanche (AVAX)
+
+But i would assume any highly popular EVM chain may be considered in the future
+
+Again, take the above with a grain of salt, hopefully the team can confirm 🙏
+
+{Reactions}
+🙀 (2) 👑 👍 (2) 
+
+[06/07/2024 05:27] samuselderg
+I just looked at the readme which confirms my thoughts:
+
+{Attachments}
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/image-086F8.png
+
+
+[06/07/2024 09:00] .justuzair
+```diff
+// ROUTER Interface
+interface iROUTER {
++    @> function depositWithExpiry(address, address, uint256, string calldata, uint256) external;
+}
+```
+
+what does the function params in highlighted lines stand for??
+
+
+[06/07/2024 09:49] mrudenko
+Error HH303: Unrecognized task 'coverage'
+
+For more info go to https://hardhat.org/HH303 or run Hardhat with --show-stack-traces
+
+Guys, have you faced simmilar issue?
+
+{Embed}
+https://hardhat.org/HH303
+Hardhat errors | Ethereum development environment for professionals...
+Ethereum development environment for professionals by Nomic Foundation
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/card-676D2.jpg
+
+
+[06/07/2024 09:53] 0xshaheen
+vault address, token address, token amount, trx memo, trx expiration time. Look at the  `depositWithExpiry` function in the `THORChain_Router` contract brother
+
+
+[06/07/2024 11:30] iam_emptyset
+So the scope now changed?
+
+{Reactions}
+8964monkathink (3) 
+
+[06/07/2024 11:59] samuselderg
+Not sure? As I say, wait for the team to confirm, but I was just relaying info from the readme. Based on the readme the contracts will be deployed to ethereum, avax and BSC
+
+
+[06/07/2024 12:20] tamayonft
+why the documentation refer to a gas assets those tokens that are put it in the router
+
+
+[06/07/2024 12:20] tamayonft
+?
+
+
+[06/07/2024 12:23] 0xshaheen
+gas assets probably mean native tokens like ethers on ethereum etc
+
+
+[06/07/2024 12:23] tamayonft
+mmm make sense bro
+
+
+[06/07/2024 12:23] tamayonft
+thanks
+
+{Reactions}
+hi5 
+
+[06/07/2024 14:14] olegpetrov
+in order:
+
+`address vault` a currently active thorchain vault (controlled by a TSS)
+`address asset` what asset is being deposited (0x0 for ether)
+`uint256 amount` the amount of tokens being deposited
+`string memo` a thorchain memo (https://dev.thorchain.org/concepts/memos.html)
+`uint256 expiry` block.timestamp at which point to revert the tx
+
+{Embed}
+https://dev.thorchain.org/concepts/memos.html
+Transaction Memos - THORChain Dev Docs
+Developer Documentation for THORChain. Integrate with THORChain; Swap, Save and Lend.
+
+
+[06/07/2024 14:14] olegpetrov
+What version of hardhat are you using? its working fine for me. what script are you using?
+
+
+[06/07/2024 14:15] olegpetrov
+The scope didn't change. eth, avax and bsc are the target deployments.
+
+{Reactions}
+👍 
+
+[06/07/2024 14:21] iam_emptyset
+Ok
+
+
+[06/07/2024 15:19] eridanus9r (pinned)
+Yes, this is correct. ETH, AVAX (C-chain) and BNB Chain (Binance Smart Chain) are the deployment targets and are in scope
+
+{Reactions}
+🙏 
+
+[06/07/2024 15:22] jejebl
+Hello ! In THORChain_Router.sol, line 362, why it should not revert ? // add test case if aggregator fails, it should not revert the whole transaction (transferOutAndCallV5 call succeeds)
+      // call swapOutV5 with erc20. if the aggregator fails, the transaction should not revert
+
+
+[06/07/2024 15:36] olegpetrov
+this is a design choice where we want the assets to be transferred to the dex aggregation contracts and from their its entirely the aggregator contract's responsibility to manage the funds.
+
+we debated this, but the current design (router V4) simply retries the transaction on failure, until the transaction is dropped.
+
+
+[06/07/2024 15:53] kartoonjoy
+Pinned a message.
+
+
+[06/07/2024 16:03] jejebl
+So why revert if it's eth (line 323) and don't revert when it's erc20 ?
+
+
+[06/07/2024 16:07] olegpetrov
+where is it reverting for eth?
+
+{Attachments}
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/image-99149.png
+
+
+[06/07/2024 16:09] jejebl
+it's not reverting but you send back eth to the owner if the swapoutv5 function fail.
+
+
+[06/07/2024 16:11] olegpetrov
+1. try to execute the aggregation
+
+if #1 fails (many legitimate reasons)
+
+2. send ether to the aggregation contract
+
+if #2 fails (e.g. malicious contract tries to re-enter a router method)
+
+3. then send back the ether to the vault as ether should never be left in the router
+
+
+[06/07/2024 16:12] olegpetrov
+> So why revert if it's eth (line 323) and don't revert when it's erc20 ?
+
+I'm not sure what you mean by this, the transaction is not reverting neither for ether or an erc20
+
+
+[06/07/2024 16:19] eridanus9r
+please create a thread in the future
+
+
+[06/07/2024 17:12] hgq2wnl
+is there any new guidance on running the golang tests?
+
+
+[06/07/2024 18:15] eridanus9r
+will post here in a bit, sorry for the delay
+
+
+[06/07/2024 18:18] eridanus9r (pinned)
+For Wardens: here is a basic flowchart that shows a USDT (eth) -> USDT.e (avax) swap using THORChain + an aggregator. Let me know if anyone would like to see any other flows mapped out like this or if there are any questions
+
+{Attachments}
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/TC_Aggr-Aggregator.drawio-F097A.png
+
+
+[06/07/2024 18:28] eridanus9r (pinned)
+You can build the THORChain locally with these intstructions https://github.com/code-423n4/2024-06-thorchain/blob/main/README-project.md#setup
+
+{Reactions}
+thankyou (2) 
+
+[06/07/2024 18:29] eridanus9r
+That README also has testing instructions. `make test` will run unit tests for both bifrost and thornode
+
+
+[06/07/2024 18:35] eridanus9r
+Also, here are instructions for testing aggregators with a local mainnet fork of ETH: https://github.com/code-423n4/2024-06-thorchain/blob/main/tools/evm/README.md
+
+
+[06/07/2024 20:47] tamayonft
+is anyone having problems to navigate througth the go files?
+
+
+[06/08/2024 02:37] tamayonft
+can the etherium_block_scanner modified the state of the blockchain?
+
+
+[06/08/2024 06:40] kartoonjoy
+Pinned a message.
+
+
+[06/08/2024 06:40] kartoonjoy
+Pinned a message.
+
+
+[06/08/2024 07:25] svetborislavov
+Trying to install the dependencies an run the tests in the ethereum folder, I receive dependency conflicts. May someone send the correct package.json
+
+
+[06/08/2024 09:32] svetborislavov
+In `_transferOutAndCallV5`  why we should not revert the transaction if the swapOutV5 fails
+
+
+[06/08/2024 10:39] tim_peng.
+https://chatgpt.com/share/808cb5b4-2feb-4071-8fe7-080233279749  this is the answer I got from chatgpt
+
+{Embed}
+https://chatgpt.com/share/808cb5b4-2feb-4071-8fe7-080233279749
+ChatGPT
+A conversational AI system that listens, learns, and challenges
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/chatgpt-share-og.49cbbffe-82407.png
+
+{Reactions}
+🙌 
+
+[06/08/2024 10:45] 0xshaheen
+https://discord.com/channels/810916927919620096/1245809305505104035/1248661964352126996
+
+{Reactions}
+🙌 
+
+[06/08/2024 12:22] iam_emptyset
+Can I add hardhat-foundry plugin to run my tests? @olegpetrov
+
+
+[06/08/2024 12:23] olegpetrov
+locally sure thing, you can add anything
+
+
+[06/08/2024 12:24] iam_emptyset
+I mean when submitting my findings I will use it
+
+
+[06/08/2024 14:23] mrudenko
+Question - where I can read about memo string syntax - https://github.com/code-423n4/2024-06-thorchain/blob/e3fd3c75ff994dce50d6eb66eb290d467bd494f5/chain/ethereum/contracts/THORChain_Router.sol#L257
+here is example of memo record which I want understand
+
+{Embed}
+https://github.com/code-423n4/2024-06-thorchain/blob/e3fd3c75ff994dce50d6eb66eb290d467bd494f5/chain/ethereum/contracts/THORChain_Router.sol
+2024-06-thorchain/chain/ethereum/contracts/THORChain_Router.sol at ...
+Contribute to code-423n4/2024-06-thorchain development by creating an account on GitHub.
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/3f9fffbc-14a4-42b2-a9a4-0bf1d6bb68ec-E44DB
+
+
+[06/08/2024 15:46] sysrqb
+the memo string syntax is outlined here https://gitlab.com/thorchain/thornode/-/blob/develop/docs/concepts/memos.md?ref_type=heads
+
+{Embed}
+https://gitlab.com/thorchain/thornode/-/blob/develop/docs/concepts/memos.md?ref_type=heads
+docs/concepts/memos.md · develop · THORChain / THORNode · GitLab
+THORChain is a CosmosSDK state machine for decentralised liquidity on UTXO, EVM and BFT chains, supporting both ECDSA and EDDSA protocols. The protocol is attached to a signing-engine...
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/RUNE-ICON-FLASH_512-F132C.png
+
+{Reactions}
+👍 
+
+[06/08/2024 16:15] tamayonft
+what  EVM outbound mean in the transfer out description
+
+
+[06/08/2024 16:19] 0xhacksmithh
+@olegpetrov @sysrqb made a PT, pls reply whenever you have free times
+
+
+[06/08/2024 16:33] eridanus9r (pinned)
+Message to Wardens: As pointed out by several of you, the Bifrost code that is in scope does not currently have all of the Router V5 functionality, which means that aspect of Bifrost is not in scope. The Bifrost code is in scope as it relates to the depositWithExpiry, trasnsferOut, transferOutAndCall, and transferAllowance functionality, as well as the removal of the smart contract whitelist as highlighted in the README
+
+{Reactions}
+👍 (4) 
+
+[06/08/2024 17:11] dontonka
+@CloudEllie ☝️ this is something many Wardens might submit, this needs to be ensure that it would get no rewards, could we add this as a known issue in the contest page?
+
+{Reactions}
+👍 
+
+[06/08/2024 18:18] cloudellie
+Pinned a message.
+
+
+[06/08/2024 19:14] ivanfitro
+the allowance of eth can not be changed for a new vault?
+
+
+[06/08/2024 20:57] 0xshaheen
+the router contract doesn't expect to hold any ethers, ethers get directly transferred to vaults, thats why there is no need for ethers' allowances
+
+{Reactions}
+👍 (2) 
+
+[06/09/2024 13:39] tamayonft
+The resolver function will be the same as the is showing in the test the mock resolvers?
+
+
+[06/09/2024 13:53] tamayonft
+the smartcontract_log_parser is a new implementation or was already there?
+
+
+[06/09/2024 15:18] 0xshaheen
+I don't think so its a new implementation. It was already there, the hacks reports shows that. Probably some new minor updates
+
+
+[06/10/2024 05:10] agadzhalov
+Since whitelisting is removed this means any ERC20 token can be deposited in the router contract, is this correct?
+
+
+[06/10/2024 05:21] agadzhalov
+is transferOut called only by the vaults?
+
+
+[06/10/2024 07:21] 0xshaheen
+https://discord.com/channels/810916927919620096/1245809305505104035/1248266362363576331
+
+https://discord.com/channels/810916927919620096/1245809305505104035/1248275040710033429
+
+{Reactions}
+🙏 
+
+[06/10/2024 11:38] cloudellie
+If I understand correctly, it is already detailed in the `README`, in the section [here](https://github.com/code-423n4/2024-06-thorchain?tab=readme-ov-file#thorchain-architecture-overview) -- specifically the sub-section titled "Bifrost Observation and Signing Interface (Partially in scope)". 
+
+But I will double-check with our technical reviewers.
+
+
+[06/10/2024 13:16] dontonka
+Negative sir on my hand, that text doesn't specifiy this issue. What it means is it's partially in scope because only 2 files from that repo is in scope, but that's all, it doesn't mention nothing about the fact that those 2 files in-scope will require an upgrade to support V5 code from the Router that is in the contest in-scope.
+
+{Reactions}
+👍 thankyou 🫡 
+
+[06/10/2024 13:49] nfmelendez
+Is the vault address a smart contract or a EOA ?
+
+
+[06/10/2024 15:20] familiarcow
+Vault address is an EOA generated through GG20 Threshold Signatures
+
+{Reactions}
+👍 
+
+[06/10/2024 15:20] familiarcow
+The whitelist being removed is referring to the restriction of only whitelisted smart contracts being able to call the thorchain router, not the ERC-20 whitelist
+
+{Reactions}
+thankyou 
+
+[06/10/2024 16:49] rahiti
+Why do we exit early in some cases in the `GetTxInItem()` function? [Here](https://github.com/code-423n4/2024-06-thorchain/blob/e3fd3c75ff994dce50d6eb66eb290d467bd494f5/bifrost/pkg/chainclients/shared/evm/smartcontract_log_parser.go#L166)
+
+
+[06/10/2024 17:19] eridanus9r
+we exit early when we only want to process one log in a transaction. For example there should only be one transferOut event per transaction (in the current implementation)
+
+{Reactions}
+❤️ 
+
+[06/11/2024 08:52] irving6969
+`blockMetas, err := e.blockMetaAccessor.GetBlockMetas()`
+how many blockMetas will be fetched?
+
+
+[06/11/2024 14:11] rouhsamad
+did you manage to run the local chain? i keep getting this error after running `make go-generate openapi protob-docker install `:
+`protoc-gen-gocosmos: program not found or is not executable`
+`Please specify a program using absolute path or make sure the program is available in your PATH system variable`
+`--gocosmos_out: protoc-gen-gocosmos: Plugin failed with status code 1.`
+which seems to be related to this section of `scripts/protocgen.sh`:
+
+# shellcheck disable=SC2038
+find proto/ -path -prune -o -name '*.proto' -printf '%h\n' | sort | uniq |
+  while read -r DIR; do
+    find "$DIR" -maxdepth 1 -name '*.proto' |
+      xargs protoc \
+        -I "proto" \
+        -I "third_party/proto" \
+        --gocosmos_out=plugins=interfacetype+grpc,Mgoogle/protobuf/any.proto=github.com/cosmos/cosmos-sdk/codec/types:.
+  done
+
+this is my `go env`:
+GO111MODULE='on'
+GOARCH='amd64'
+GOBIN='/home/roholah/go/bin'
+GOCACHE='/home/roholah/.cache/go-build'
+GOENV='/home/roholah/.config/go/env'
+GOEXE=''
+GOEXPERIMENT=''
+GOFLAGS=''
+GOHOSTARCH='amd64'
+GOHOSTOS='linux'
+GOINSECURE=''
+GOMODCACHE='/home/roholah/go/pkg/mod'
+GONOPROXY=''
+GONOSUMDB=''
+GOOS='linux'
+GOPATH='/home/roholah/go'
+GOPRIVATE=''
+GOPROXY='https://goproxy.cn,direct'
+GOROOT='/usr/local/go'
+GOSUMDB='sum.golang.org'
+GOTMPDIR=''
+GOTOOLCHAIN='auto'
+GOTOOLDIR='/usr/local/go/pkg/tool/linux_amd64'
+GOVCS=''
+GOVERSION='go1.22.4'
+GCCGO='gccgo'
+GOAMD64='v1'
+AR='ar'
+CC='gcc'
+CXX='g++'
+CGO_ENABLED='1'
+GOMOD='/dev/null'
+GOWORK=''
+CGO_CFLAGS='-O2 -g'
+CGO_CPPFLAGS=''
+CGO_CXXFLAGS='-O2 -g'
+CGO_FFLAGS='-O2 -g'
+CGO_LDFLAGS='-O2 -g'
+PKG_CONFIG='pkg-config'
+GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build550866940=/tmp/go-build -gno-record-gcc-switches'
+
+also i do have `protoc-gen-gocosmos` in my `GOPATH/bin`
+
+
+[06/11/2024 14:12] rouhsamad
+i can not submit my findings, because there is no way to submit my PoC without running a local chain
+
+
+[06/11/2024 14:51] eridanus9r
+Started a thread.
+
+
+[06/11/2024 14:56] eridanus9r
+Started a thread.
+
+
+[06/11/2024 17:14] rouhsamad
+could you please tell where can we find the private key of test accounts on the ETH and thor mocknets @Eridanus (9R)
+
+
+[06/11/2024 19:28] rouhsamad
+if anyone is curios, you can fund your ETH account:
+`docker exec -it docker-ethereum-1 /bin/sh`
+then:
+`cd data`
+then :
+`geth attach geth.ipc`
+and then:
+`web3.eth.sendTransaction({from: eth.accounts[0], to: 'your_address', value: 100000000000000000000})`
+
+{Reactions}
+🙏 (3) 
+
+[06/11/2024 19:37] eridanus9r
+thanks for posting this
+
+{Reactions}
+👍 
+
+[06/12/2024 03:45] acegawd
+Hey ,can I message you in a private 🧵? @Eridanus (9R) ?
+
+
+[06/12/2024 14:35] acegawd
+@FamiliarCow are you available for a question?
+
+
+[06/12/2024 14:35] familiarcow
+best to message @Eridanus (9R) or @olegpetrov - not a dev myself 🙂
+
+
+[06/12/2024 14:36] acegawd
+I have mentioned him and yet I'm still awaiting his response .
+
+
+[06/12/2024 14:39] acegawd
+@olegpetrov check private 🧵
+
+
+[06/12/2024 14:39] _karanel
+I believe you should wait, not all sponsors work in similar timezones.
+
+
+[06/12/2024 14:40] _karanel
+I guess they'll be active in a few hours from now.
+
+
+[06/12/2024 14:40] acegawd
+I do understand that ,so allow me .
+
+{Reactions}
+🙌 
+
+[06/12/2024 15:35] eridanus9r
+sorry for the delay, yes feel free to add me to a private thread
+
+
+[06/12/2024 15:35] acegawd
+I did @Eridanus (9R)
+
+{Reactions}
+👍 
+
+[06/12/2024 16:18] corporalkinng
+In the readme, it is said that `transferOutAndCall calls a whitelisted “aggregator” contract’s swapOut function` . 
+Does this mean that those aggregator addresses are being selected in the moment Bitfrost signs the transferOutAndCall() transaction (e.g. after receiving a swap request) ?
+Or it means that there is some aggregator whitelist present somewhere ?
+
+
+[06/12/2024 16:22] eridanus9r
+there is a whitelist for aggregators in thornode here: https://github.com/code-423n4/2024-06-thorchain/blob/main/x/thorchain/aggregators/dex_mainnet_current.go
+
+{Embed}
+https://github.com/code-423n4/2024-06-thorchain/blob/main/x/thorchain/aggregators/dex_mainnet_current.go
+2024-06-thorchain/x/thorchain/aggregators/dex_mainnet_current.go at...
+Contribute to code-423n4/2024-06-thorchain development by creating an account on GitHub.
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/3f9fffbc-14a4-42b2-a9a4-0bf1d6bb68ec-E44DB
+
+
+[06/12/2024 16:22] eridanus9r
+only aggregators whitelisted there can be used
+
+
+[06/12/2024 20:02] C4
+**🚨 AUDIT ALERT**
+
+@🐺Wardens The **Thorchain** audit is now closed! Huge thanks to everyone who participated 🔍, whether you submitted a finding or not.
+
+What's next: The sponsor team and judge will review the findings over the next couple of weeks. Feel free to ping a Civics-Admin if you have questions along the way!
+
+{Reactions}
+🙏 (3) 
+
+[06/12/2024 20:46] tamayonft
+Nice codebase, thank so much for the sponsor
+
+{Reactions}
+💯 (2) 
+
+[06/12/2024 20:46] tamayonft
+How many submissions?
+
+{Reactions}
+🕵️‍♂️ (4) 
+
+[06/13/2024 01:37] 0xshaheen
+~255
+
+
+[06/18/2024 02:34] maushish
+Is there any way from which I can partake in pjqa?
+
+
+[06/18/2024 12:06] iam_emptyset
+Hi, how can I know the status of my submission?
+
+
+[06/18/2024 16:28] familiarcow
+Team is still going through all the entries
+
+
+[06/19/2024 15:52] dontonka
+Finding repo is stale since `2 days`, no judge nor sponsor activity detected :4739_Skeletor: .
+
+
+[06/19/2024 17:25] eridanus9r
+still working through submissions on our end
+
+{Reactions}
+🙌 (3) 🫡 (3) 
+
+[06/19/2024 22:42] kartoonjoy
+Once the audit is awarded and the report is published, you'll be able to see your individual findings.
+
+{Reactions}
+👍 (2) 
+
+[06/21/2024 13:10] dontonka
+Started a thread.
+
+
+[06/23/2024 21:49] tamayonft
+When qa?
+
+
+[06/24/2024 02:08] 0xshaheen
+wen
+
+
+[06/24/2024 05:35] dontonka
+judge seems to have complete his work, so this should come early this week I guess.
+
+
+[06/24/2024 09:17] 0xshaheen
+Yea mate. Looks like it was done earlier last week. No idea why PJQA is not opened yet!
+
+
+[06/25/2024 13:47] _karanel
+can someone inform here when pjqa starts?
+
+
+[06/25/2024 14:04] 0xshaheen
+PJQA is underway / already started
+
+
+[06/25/2024 14:05] 0xshaheen
+Will end tomorrow
+
+
+[06/25/2024 14:05] oxtenma
+use this https://dailywarden.com/
+
+{Embed}
+https://dailywarden.com/
+Daily Warden - Active and upcoming contests sent to you daily
+20 Active and Upcoming Contests
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/d9zjlrJR-29B78.png
+
+{Reactions}
+👆 👍 (2) 
+
+[07/01/2024 14:04] shibi_kishore101
+Does anyone know when the rewards will be announced?
+
+
+[07/02/2024 18:29] no.one7777
+top 10 is releated
+
+
+[07/02/2024 18:30] volokinn
+https://code4rena.com/audits/2024-06-thorchain#top
+
+{Embed}
+https://code4rena.com/audits/2024-06-thorchain
+Thorchain | Code4rena
+$36,500 in USDC
+5 June 8:00 PM—12 June 8:00 PM
+Code4rena - ARCHIVE-Q2-2024 - thorchain-jun05 [1245809305505104035].txt_Files/c4-og-v2-7FDD7.png
+
+
+[07/02/2024 18:30] volokinn
+You can check the results here
+
+
+[07/02/2024 18:37] thebrittfactor
+🤑 🎉  Awards for **Thorchain**:
+
+$7,111.06 USDC » @ilchovski 
+$4,820.15 USDC » @samuraii77 
+$3,891.19 USDC » @rbserver 
+$3,753.62 USDC » @Bauchibred 
+$1,994.24 USDC » @mt030d 
+$758.41 USDC » @cheatc0d3 
+$752.57 USDC » @Shaheen 
+$656.27 USDC » @Svetoslavb 
+$615.00 USDC » Team_RockSolid (@14si2o_Flint, @Drynooo, @CaeraDenoir and @OKOMO) 
+$596.13 USDC » @Greed 
+$568.42 USDC » @sivanesh_808 
+$477.43 USDC » @0xAadi 
+$477.43 USDC » @0xbug 
+$477.43 USDC » @shaflow2 
+$458.56 USDC » Fortis_audits (@Mahi_Vasisth and @Bluedragon101) 
+$458.56 USDC » @HX0111 
+$458.56 USDC » @_karanel 
+$397.82 USDC » @hunter_w3b 
+$271.50 USDC » EPSec (@0x539.eth and @petarP1998) 
+$162.10 USDC » @PTolev 
+$151.72 USDC » @Gosho 
+$137.57 USDC » @dhank 
+$137.57 USDC » @dvrkzy 
+$137.57 USDC » @Auwal Balarabe 
+$137.57 USDC » @nfmelendez 
+$18.87 USDC » @0xfox 
+$18.87 USDC » @Limbooo 
+$18.87 USDC » LuarSec (@GhK3Ndf and lod1n) 
+$18.87 USDC » @ikkun_1011 
+$18.87 USDC » @Timenov 
+$18.87 USDC » @@benoitonchain / Set In Stone 
+$18.87 USDC » @...
+
+{Reactions}
+🇧🇬 (13) ❤️‍🔥 👏 🇦🇷 
+
+[07/02/2024 18:37] thebrittfactor
+$9.44 USDC » @0x1771 
+
+🏁 Findings summary
+--------------------------------------
+2 High risk findings
+2 Med risk findings
+77 wardens contributed
+
+Top Gatherer: ilchovski
+Top Hunter: Bauchibred, samuraii77, rbserver and ilchovski
+Top QA report: sivanesh_808
+
+Awards will be distributed on Polygon within the next week. Congratulations all!  💸 💸 💸
+
+*Note: If you participated in this audit and don’t see your name on this list, please wait until the report is published and the findings repo is made public to check on your submissions.*
+
+
+[07/02/2024 18:42] 0xshaheen
+Alhumdulilah. Congrats Everyone. Thanks Sponsora and C4!
+
+{Reactions}
+🎉 (8) 
+
+[07/02/2024 18:46] 14si2o_flint
+Congratz Everyone!
+
+{Reactions}
+❤️ (4) 
+
+[07/02/2024 18:49] hunter0x01
+Congrats bro, didn't know you had Golang in your arsenal
+
+{Reactions}
+❤️ 🫡 
+
+[07/02/2024 21:11] dontonka
+Wow, my escalation has never been completed on https://github.com/code-423n4/2024-06-thorchain-findings/issues/27, amazing judging on this one tbh 👏, but we know where it was ended anyway.
+
+{Reactions}
+👍 (4) 
+
+[07/02/2024 21:12] dontonka
+👎
+
+
+[07/02/2024 22:36] ilchovski
+good job everybody 🙂
+
+{Reactions}
+🔥 
+
+[07/03/2024 00:02] _karanel
+One more valid issue till SR. LFG!! 🚀
+
+{Reactions}
+🔥 (2) 
+
+[07/03/2024 02:42] angry_mustache_man
+Congrats @_karanel 🎉🎉🎉
+
+{Reactions}
+❤️ 
+
+[07/03/2024 06:44] ihtishamsudo
+MashaAllah Brother, Congrats 🎉🎉🎉
+
+{Reactions}
+❤️ 
+
+[07/03/2024 13:17] trust90
+Your escalation was completed, after two messages in the thread judges are not required to repeatedly hold off more and more argumentation. Made a verdict and that's it
+
+{Reactions}
+thankyou (3) 
+
+[07/03/2024 13:39] dontonka
+Interesting, I was not aware of this rule.
+
+
+[07/03/2024 14:03] _karanel
+report when?
+
+
+[07/04/2024 16:20] nfmelendez
+Hi there, anxiousto see the final report to learn what i missed 🙂
+
+
+[07/12/2024 01:13] itsmetechjay
+ℹ️ This channel is pending archive.   As a result, any private threads will be permanently deleted on Friday, 19 July 2024. Please make sure to grab anything you might need before then.
+
+{Reactions}
+🫡 
+
+[07/18/2024 16:17] shibi_kishore101
+when will the report gets released
+
+
+[07/18/2024 16:53] thebrittfactor
+We are currently waiting for the sponsors to approve publishing.
+
+
+[07/19/2024 02:37] itsmetechjay
+ℹ️ Reminder: this channel will be deleted after 24 hours.
+
+
+[07/19/2024 06:15] iam_emptyset
+Please where can I find the public repo of this contest when this channel is deleted?
+
+
+[07/19/2024 08:06] 0xsorrynotsorry
+You can find the repo in Code4rena's GitHub once the findings repo is public.
+
+{Reactions}
+thankyou 
+
+[07/19/2024 08:53] iam_emptyset
+Ok
+
+
+[07/20/2024 14:37] 0xshaheen
+hey, i think you forgot something 😄
+
+{Reactions}
+😂 (3) 
+
+[07/20/2024 15:22] itsmetechjay
+it's on my list 😉 thanks for keeping me honest!
+
+{Reactions}
+hi5 😄 
+
+==============================================================
+Exported 155 message(s)
+==============================================================
